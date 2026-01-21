@@ -404,6 +404,153 @@
         ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
 
+        /* Control Panel */
+        .control-panel {
+            padding: 15px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-tertiary);
+            max-height: 50vh;
+            overflow-y: auto;
+        }
+
+        .control-panel h4 {
+            font-size: 0.75em;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .control-section {
+            margin-bottom: 12px;
+        }
+
+        .control-section-title {
+            font-size: 0.7em;
+            color: var(--accent);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .control-btn {
+            padding: 10px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 1.2em;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-btn:hover { background: var(--border); border-color: var(--accent); }
+        .control-btn:active { transform: scale(0.95); }
+        .control-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .control-btn.action {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+        }
+
+        .control-btn.action:hover {
+            background: var(--accent);
+            color: var(--bg-primary);
+        }
+
+        .control-btn.danger {
+            background: rgba(248, 81, 73, 0.2);
+            border-color: var(--danger);
+        }
+
+        .control-btn.danger:hover {
+            background: var(--danger);
+        }
+
+        .control-btn.warning {
+            background: rgba(210, 153, 34, 0.2);
+            border-color: var(--warning);
+        }
+
+        .control-btn.warning:hover {
+            background: var(--warning);
+            color: var(--bg-primary);
+        }
+
+        .control-btn.small {
+            font-size: 0.8em;
+            padding: 6px 8px;
+        }
+
+        .control-actions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+        }
+
+        .control-actions .control-btn {
+            font-size: 0.85em;
+            padding: 8px;
+        }
+
+        .control-actions-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+        }
+
+        .control-actions-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+        }
+
+        .selected-turtle-label {
+            font-size: 0.85em;
+            color: var(--accent);
+            margin-bottom: 8px;
+            padding: 6px 10px;
+            background: rgba(0, 255, 135, 0.1);
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .command-input-container {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .command-input {
+            flex: 1;
+            padding: 8px 12px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.85em;
+        }
+
+        .command-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .command-input::placeholder {
+            color: var(--text-dim);
+        }
+
         /* Responsive */
         @media (max-width: 1000px) {
             .sidebar { width: 240px; }
@@ -454,6 +601,114 @@
                     <p>Waiting for turtles...</p>
                 </div>
             </div>
+
+            <div class="control-panel" id="controlPanel">
+                <h4>🎮 Turtle Control</h4>
+                <div class="selected-turtle-label" id="selectedTurtleLabel">
+                    Select a turtle to control
+                </div>
+                
+                <!-- Movement Section -->
+                <div class="control-section">
+                    <div class="control-section-title">Movement</div>
+                    <div class="control-grid">
+                        <div></div>
+                        <button class="control-btn" onclick="sendCommand('forward')" title="Forward">⬆️</button>
+                        <div></div>
+                        
+                        <button class="control-btn" onclick="sendCommand('turnLeft')" title="Turn Left">⬅️</button>
+                        <button class="control-btn" onclick="sendCommand('back')" title="Back">⬇️</button>
+                        <button class="control-btn" onclick="sendCommand('turnRight')" title="Turn Right">➡️</button>
+                        
+                        <button class="control-btn small" onclick="sendCommand('turnAround')" title="Turn Around">🔄</button>
+                        <button class="control-btn" onclick="sendCommand('up')" title="Up">🔼</button>
+                        <button class="control-btn" onclick="sendCommand('down')" title="Down">🔽</button>
+                    </div>
+                </div>
+
+                <!-- Actions Section -->
+                <div class="control-section">
+                    <div class="control-section-title">Actions</div>
+                    <div class="control-actions-3">
+                        <button class="control-btn action small" onclick="sendCommand('dig')" title="Dig Forward">⛏️ Dig</button>
+                        <button class="control-btn action small" onclick="sendCommand('digUp')" title="Dig Up">⛏️↑</button>
+                        <button class="control-btn action small" onclick="sendCommand('digDown')" title="Dig Down">⛏️↓</button>
+                        <button class="control-btn small" onclick="sendCommand('place')" title="Place Block">📦</button>
+                        <button class="control-btn small" onclick="sendCommand('placeUp')" title="Place Up">📦↑</button>
+                        <button class="control-btn small" onclick="sendCommand('placeDown')" title="Place Down">📦↓</button>
+                        <button class="control-btn small" onclick="sendCommand('suck')" title="Collect Items">🧲</button>
+                        <button class="control-btn small" onclick="sendCommand('attack')" title="Attack">⚔️</button>
+                        <button class="control-btn small" onclick="sendCommand('inspect')" title="Inspect">🔍</button>
+                    </div>
+                </div>
+
+                <!-- Mining Tasks Section -->
+                <div class="control-section">
+                    <div class="control-section-title">Mining Tasks</div>
+                    <div class="control-actions">
+                        <button class="control-btn action" onclick="promptCommand('quarry', 'Enter quarry size (default 8):', 'size')" title="Quarry Mining">🕳️ Quarry</button>
+                        <button class="control-btn action" onclick="promptCommand('tunnel', 'Enter tunnel length (default 50):', 'length')" title="Tunnel Mining">🚇 Tunnel</button>
+                        <button class="control-btn action" onclick="sendCommand('branch')" title="Branch Mining">🌿 Branch Mine</button>
+                        <button class="control-btn action" onclick="sendCommand('mine')" title="Auto Mine">⛏️ Auto Mine</button>
+                    </div>
+                </div>
+
+                <!-- Colony Tasks Section -->
+                <div class="control-section">
+                    <div class="control-section-title">Colony</div>
+                    <div class="control-actions">
+                        <button class="control-btn warning" onclick="sendCommand('replicate')" title="Create New Turtle">🥚 Replicate</button>
+                        <button class="control-btn" onclick="sendCommand('canReplicate')" title="Check Replication">❓ Can Replicate?</button>
+                        <button class="control-btn" onclick="sendCommand('auto')" title="Autonomous Mode">🤖 Auto Mode</button>
+                        <button class="control-btn" onclick="promptCommand('craft', 'Enter recipe name:', 'recipe')" title="Craft Item">🔧 Craft</button>
+                    </div>
+                </div>
+
+                <!-- Inventory Section -->
+                <div class="control-section">
+                    <div class="control-section-title">Inventory</div>
+                    <div class="control-actions-3">
+                        <button class="control-btn small" onclick="sendCommand('refuel')" title="Refuel">⛽ Fuel</button>
+                        <button class="control-btn small" onclick="sendCommand('dropTrash')" title="Drop Trash">🗑️ Trash</button>
+                        <button class="control-btn small" onclick="sendCommand('dumpToChest')" title="Dump Items">📤 Dump</button>
+                        <button class="control-btn small" onclick="sendCommand('inventory')" title="Check Inventory">📋 Inv</button>
+                        <button class="control-btn small" onclick="sendCommand('dropAll')" title="Drop All">🚮 Drop All</button>
+                        <button class="control-btn small" onclick="sendCommand('fuel')" title="Check Fuel">🔋 Check</button>
+                    </div>
+                </div>
+
+                <!-- Navigation Section -->
+                <div class="control-section">
+                    <div class="control-section-title">Navigation</div>
+                    <div class="control-actions-3">
+                        <button class="control-btn small" onclick="sendCommand('goHome')" title="Return Home">🏠 Home</button>
+                        <button class="control-btn small" onclick="sendCommand('setHome')" title="Set Home">📍 Set Home</button>
+                        <button class="control-btn small" onclick="promptGoTo()" title="Go To Coordinates">🎯 Go To</button>
+                        <button class="control-btn small" onclick="sendCommand('locate')" title="GPS Locate">📡 GPS</button>
+                        <button class="control-btn small" onclick="sendCommand('position')" title="Get Position">📐 Pos</button>
+                        <button class="control-btn small" onclick="sendCommand('status')" title="Full Status">ℹ️ Status</button>
+                    </div>
+                </div>
+
+                <!-- Control Section -->
+                <div class="control-section">
+                    <div class="control-section-title">Control</div>
+                    <div class="control-actions-3">
+                        <button class="control-btn danger" onclick="sendCommand('stop')" title="Stop Current Task">🛑 Stop</button>
+                        <button class="control-btn warning small" onclick="sendCommand('pause')" title="Pause">⏸️ Pause</button>
+                        <button class="control-btn action small" onclick="sendCommand('resume')" title="Resume">▶️ Resume</button>
+                    </div>
+                </div>
+
+                <!-- Custom Command -->
+                <div class="control-section">
+                    <div class="control-section-title">Custom Command</div>
+                    <div class="command-input-container">
+                        <input type="text" class="command-input" id="customCommand" placeholder="command or lua code..." onkeypress="if(event.key==='Enter')runCustomCommand()">
+                        <button class="control-btn action small" onclick="runCustomCommand()" title="Send">▶️</button>
+                    </div>
+                </div>
+            </div>
         </aside>
         
         <main class="main">
@@ -495,6 +750,7 @@
         };
         let ws = null;
         let reconnectTimer = null;
+        let selectedTurtleId = null;
 
         // WebSocket connection
         function connect() {
@@ -553,6 +809,17 @@
                 case 'stats':
                     Object.assign(colony.stats, msg.data);
                     renderStats();
+                    break;
+                case 'command_ack':
+                    console.log('Command acknowledged:', msg.data);
+                    break;
+                case 'command_result':
+                    console.log('Command result:', msg.data);
+                    if (msg.data.success) {
+                        showNotification('✅ ' + (msg.data.message || 'Command completed'));
+                    } else {
+                        showNotification('❌ ' + (msg.data.message || 'Command failed'), 'error');
+                    }
                     break;
             }
         }
@@ -687,6 +954,146 @@
 
         // Handle window resize
         window.addEventListener('resize', () => renderMap());
+
+        // Select turtle for control
+        function selectTurtle(id) {
+            selectedTurtleId = id;
+            const turtle = colony.turtles[id];
+            const label = turtle ? `${turtle.label} (#${id})` : `Turtle #${id}`;
+            document.getElementById('selectedTurtleLabel').textContent = '🐢 ' + label;
+            
+            // Update UI to show selected
+            document.querySelectorAll('.turtle-item').forEach(el => {
+                el.classList.remove('selected');
+                if (el.dataset.id == id) {
+                    el.classList.add('selected');
+                }
+            });
+        }
+
+        // Send command to selected turtle
+        function sendCommand(command, args = {}) {
+            if (!selectedTurtleId) {
+                // If no turtle selected, try to select first one
+                const turtleIds = Object.keys(colony.turtles);
+                if (turtleIds.length > 0) {
+                    selectTurtle(turtleIds[0]);
+                } else {
+                    showNotification('No turtles connected', 'error');
+                    return;
+                }
+            }
+
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                showNotification('Not connected to server', 'error');
+                return;
+            }
+
+            const msg = {
+                type: 'command',
+                targetId: selectedTurtleId,
+                command: command,
+                args: args
+            };
+
+            ws.send(JSON.stringify(msg));
+            showNotification(`📤 Sent: ${command}`);
+        }
+
+        // Prompt for command argument
+        function promptCommand(command, promptText, argName) {
+            const value = prompt(promptText);
+            if (value !== null && value !== '') {
+                const args = {};
+                args[argName] = isNaN(value) ? value : parseInt(value);
+                sendCommand(command, args);
+            }
+        }
+
+        // Prompt for goTo coordinates
+        function promptGoTo() {
+            const coords = prompt('Enter coordinates (x, y, z):');
+            if (coords) {
+                const parts = coords.split(',').map(s => parseInt(s.trim()));
+                if (parts.length === 3 && parts.every(n => !isNaN(n))) {
+                    sendCommand('goTo', { x: parts[0], y: parts[1], z: parts[2] });
+                } else {
+                    showNotification('Invalid coordinates format', 'error');
+                }
+            }
+        }
+
+        // Run custom command from input
+        function runCustomCommand() {
+            const input = document.getElementById('customCommand');
+            const cmd = input.value.trim();
+            if (!cmd) return;
+
+            // Check if it looks like Lua code
+            if (cmd.includes('(') || cmd.includes('=') || cmd.includes('for') || cmd.includes('if')) {
+                sendCommand('exec', { code: cmd });
+            } else {
+                // Parse as command with optional args
+                const parts = cmd.split(' ');
+                const command = parts[0];
+                const args = {};
+                
+                // Parse args like "key=value"
+                for (let i = 1; i < parts.length; i++) {
+                    const [key, val] = parts[i].split('=');
+                    if (key && val) {
+                        args[key] = isNaN(val) ? val : parseInt(val);
+                    } else if (key) {
+                        // Positional args
+                        args['arg' + i] = isNaN(key) ? key : parseInt(key);
+                    }
+                }
+                
+                sendCommand(command, args);
+            }
+            
+            input.value = '';
+        }
+
+        // Show notification toast
+        function showNotification(message, type = 'info') {
+            // Remove existing notifications
+            const existing = document.querySelector('.notification');
+            if (existing) existing.remove();
+
+            const notification = document.createElement('div');
+            notification.className = 'notification ' + type;
+            notification.textContent = message;
+            notification.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                background: ${type === 'error' ? 'var(--danger)' : 'var(--accent-dim)'};
+                color: white;
+                border-radius: 8px;
+                font-size: 0.9em;
+                z-index: 1000;
+                animation: slideIn 0.3s ease;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            `;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.remove(), 3000);
+        }
+
+        // Add click handlers to turtle items
+        document.addEventListener('click', (e) => {
+            const turtleItem = e.target.closest('.turtle-item');
+            if (turtleItem && turtleItem.dataset.id) {
+                selectTurtle(parseInt(turtleItem.dataset.id));
+            }
+            
+            const turtleMarker = e.target.closest('.turtle-marker');
+            if (turtleMarker && turtleMarker.dataset.id) {
+                selectTurtle(parseInt(turtleMarker.dataset.id));
+            }
+        });
 
         // Start connection
         connect();

@@ -23,6 +23,7 @@ local Nav = load("/colony/lib/nav")
 local Inv = load("/colony/lib/inv")
 local Comms = load("/colony/lib/comms")
 local Reporter = load("/colony/lib/reporter")
+local Commander = load("/colony/lib/commander")
 local Miner = load("/colony/roles/miner")
 local Crafter = load("/colony/roles/crafter")
 local Brain = load("/colony/brain")
@@ -46,6 +47,7 @@ end
 Reporter.init(Nav, Inv, State, Comms)
 Miner.init(Nav, Inv, State, Comms)
 Crafter.init(Nav, Inv, State, Comms)
+Commander.init(Nav, Inv, State, Comms, Miner, Crafter, Brain)
 Brain.init(Nav, Inv, State, Comms, Miner, Crafter)
 
 -- Menu
@@ -60,6 +62,7 @@ local function menu()
         print("5. Drop Trash")
         print("6. Status")
         print("7. Test Broadcast")
+        print("8. Remote Control Mode")
         print("0. Exit")
         print("")
         write("Choice: ")
@@ -68,9 +71,16 @@ local function menu()
         
         if choice == "1" then
             print("Starting Brain (Ctrl+T to stop)...")
-            Reporter.runParallel(function() 
-                Brain.run() 
-            end)
+            parallel.waitForAny(
+                function()
+                    Reporter.runParallel(function() 
+                        Brain.run() 
+                    end)
+                end,
+                function()
+                    Commander.listen()
+                end
+            )
             
         elseif choice == "2" then
             print("Mining...")
@@ -110,6 +120,26 @@ local function menu()
                 sleep(1)
             end
             print("Done! Check bridge computer.")
+            
+        elseif choice == "8" then
+            print("Remote Control Mode - Listening for commands...")
+            print("(Ctrl+T to stop)")
+            print("")
+            print("Open the web dashboard and control this turtle!")
+            print("")
+            
+            -- Send heartbeats while listening for commands
+            parallel.waitForAny(
+                function()
+                    while true do
+                        Reporter.heartbeat()
+                        sleep(5)
+                    end
+                end,
+                function()
+                    Commander.listen()
+                end
+            )
             
         elseif choice == "0" then
             print("Goodbye!")

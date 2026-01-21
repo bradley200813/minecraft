@@ -44,6 +44,10 @@ Comms.MSG = {
     WHERE_IS = "where_is",
     WHO_HAS = "who_has",
     COLONY_STATUS = "colony_status",
+    
+    -- Remote control (from dashboard)
+    COMMAND = "command",
+    COMMAND_RESULT = "command_result",
 }
 
 -- State

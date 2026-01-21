@@ -1,129 +1,161 @@
 -- ============================================
--- GENESIS COLONY - GITHUB INSTALLER
+-- GITHUB INSTALLER FOR CC:TWEAKED
 -- ============================================
--- Downloads all colony files from GitHub
+-- Downloads colony files directly from your GitHub repo
 --
--- HOW TO USE:
--- 1. Upload this file to pastebin.com
--- 2. In Minecraft on turtle: pastebin get XXXXX install
--- 3. Run: install
+-- SETUP:
+-- 1. Push your minecraft folder to GitHub
+-- 2. Edit REPO below with your username/repo
+-- 3. Run: pastebin get <code> install
+--    Or:  wget https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main/colony/github-install.lua install
+-- 4. Run: install
 
 -- ===========================================
--- CONFIGURE YOUR GITHUB REPO HERE
+-- CONFIGURE THIS WITH YOUR GITHUB INFO
 -- ===========================================
-local GITHUB_USER = "bradley200813"  -- Your GitHub username
-local GITHUB_REPO = "minecraft"      -- Your repo name  
-local BRANCH = "main"                -- or "master"
+local GITHUB_USER = "bradley200813"
+local GITHUB_REPO = "minecraft"
+local BRANCH = "master"
 -- ===========================================
 
-local BASE = "https://raw.githubusercontent.com/"..GITHUB_USER.."/"..GITHUB_REPO.."/"..BRANCH.."/colony/"
-
-print("========================================")
-print("  GENESIS COLONY - GITHUB INSTALLER")
-print("========================================")
-print("")
-
--- Check HTTP
-if not http then
-    print("[ERROR] HTTP is disabled!")
-    print("")
-    print("Edit computercraft-server.toml:")
-    print("  [[http.rules]]")
-    print('  host = "*"')
-    print('  action = "allow"')
-    return
-end
-
--- Test connection
-print("Testing GitHub connection...")
-local test = http.get(BASE.."config.lua")
-if not test then
-    print("[ERROR] Cannot reach GitHub!")
-    print("")
-    print("Check your settings:")
-    print("  GITHUB_USER = "..GITHUB_USER)
-    print("  GITHUB_REPO = "..GITHUB_REPO)
-    print("  BRANCH = "..BRANCH)
-    print("")
-    print("Make sure the repo is PUBLIC")
-    return
-else
-    test.close()
-    print("[OK] GitHub reachable")
-end
-
--- Create directories
-fs.makeDir("/colony")
-fs.makeDir("/colony/lib")
-fs.makeDir("/colony/roles")
-print("[OK] Directories created")
-print("")
-
--- Download function
-local function get(path)
-    local url = BASE..path
-    local dest = "/colony/"..path
-    
-    write("  "..path.." ")
-    
-    local r = http.get(url)
-    if r then
-        local c = r.readAll()
-        r.close()
-        
-        if c and #c > 0 then
-            local f = fs.open(dest, "w")
-            if f then
-                f.write(c)
-                f.close()
-                print("OK ("..#c.." bytes)")
-                return true
-            end
-        end
-    end
-    
-    print("FAILED")
-    return false
-end
+local BASE_URL = "https://raw.githubusercontent.com/" .. GITHUB_USER .. "/" .. GITHUB_REPO .. "/" .. BRANCH .. "/colony/"
 
 -- Files to download
-local files = {
+local FILES = {
+    -- Config
     "config.lua",
+    
+    -- Libraries
     "lib/state.lua",
     "lib/nav.lua",
     "lib/inv.lua",
     "lib/comms.lua",
     "lib/reporter.lua",
+    
+    -- Roles
     "roles/miner.lua",
     "roles/crafter.lua",
+    
+    -- Core
     "brain.lua",
     "startup.lua",
     "eve.lua",
+    
+    -- Tools
     "test.lua",
     "bridge.lua",
 }
 
-print("Downloading "..#files.." files...")
+-- Optional files (won't fail if missing)
+local OPTIONAL = {
+    "dashboard/server.lua",
+    "dashboard/monitor.lua",
+    "dashboard/bridge/sender.lua",
+}
+
+print("========================================")
+print("  GENESIS COLONY - GITHUB INSTALLER")
+print("========================================")
+print("")
+print("Repo: " .. GITHUB_USER .. "/" .. GITHUB_REPO)
+print("Branch: " .. BRANCH)
 print("")
 
-local ok = 0
-local fail = 0
+-- Check HTTP is enabled
+if not http then
+    print("ERROR: HTTP API not enabled!")
+    print("")
+    print("Ask the server admin to edit:")
+    print("  config/computercraft-server.toml")
+    print("")
+    print("Add:")
+    print('  [[http.rules]]')
+    print('  host = "*"')
+    print('  action = "allow"')
+    return
+end
 
-for _, f in ipairs(files) do
-    if get(f) then ok = ok + 1 else fail = fail + 1 end
+-- Create directories
+local function ensureDir(path)
+    local dir = fs.getDir(path)
+    if dir ~= "" and not fs.exists(dir) then
+        fs.makeDir(dir)
+    end
+end
+
+-- Download a file
+local function download(remotePath, localPath)
+    local url = BASE_URL .. remotePath
+    localPath = localPath or ("/colony/" .. remotePath)
+    
+    ensureDir(localPath)
+    
+    local response, err = http.get(url)
+    
+    if response then
+        local content = response.readAll()
+        response.close()
+        
+        local file = fs.open(localPath, "w")
+        if file then
+            file.write(content)
+            file.close()
+            return true
+        end
+    end
+    
+    return false, err
+end
+
+-- Download all files
+print("Downloading files...")
+print("")
+
+local success = 0
+local failed = 0
+
+for _, file in ipairs(FILES) do
+    write("  " .. file .. " ... ")
+    local ok, err = download(file)
+    if ok then
+        print("OK")
+        success = success + 1
+    else
+        print("FAILED")
+        failed = failed + 1
+    end
+end
+
+-- Try optional files
+print("")
+print("Optional files...")
+for _, file in ipairs(OPTIONAL) do
+    write("  " .. file .. " ... ")
+    local ok = download(file)
+    if ok then
+        print("OK")
+        success = success + 1
+    else
+        print("skipped")
+    end
 end
 
 print("")
 print("========================================")
-if fail == 0 then
-    print("  SUCCESS! All files downloaded")
+if failed == 0 then
+    print("  INSTALLATION COMPLETE!")
 else
-    print("  WARNING: "..fail.." files failed")
+    print("  INSTALLED WITH WARNINGS")
+    print("  " .. failed .. " files failed")
 end
 print("========================================")
+print("")
+print("Downloaded: " .. success .. " files")
 print("")
 print("NEXT STEPS:")
-print("  label set Eve-1")
-print("  refuel all") 
-print("  /colony/eve")
+print("  1. label set Eve-1")
+print("  2. Put fuel in inventory")
+print("  3. refuel all")
+print("  4. /colony/eve")
 print("")
+print("========================================")

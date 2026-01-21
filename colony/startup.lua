@@ -23,6 +23,7 @@ local Nav = load("/colony/lib/nav")
 local Inv = load("/colony/lib/inv")
 local Comms = load("/colony/lib/comms")
 local Reporter = load("/colony/lib/reporter")
+local Commander = load("/colony/lib/commander")
 local Miner = load("/colony/roles/miner")
 local Crafter = load("/colony/roles/crafter")
 local Brain = load("/colony/brain")
@@ -63,6 +64,7 @@ end
 Reporter.init(Nav, Inv, State, Comms)
 Miner.init(Nav, Inv, State, Comms)
 Crafter.init(Nav, Inv, State, Comms)
+Commander.init(Nav, Inv, State, Comms, Miner, Crafter, Brain)
 Brain.init(Nav, Inv, State, Comms, Miner, Crafter)
 
 if role == "eve" then
@@ -75,8 +77,17 @@ else
         Nav.setHome()
     end
     
-    print("[WORKER] Starting autonomous mode...")
-    Reporter.runParallel(function()
-        Brain.run()
-    end)
+    print("[WORKER] Starting autonomous mode with command listener...")
+    
+    -- Run brain with command listener in parallel
+    parallel.waitForAny(
+        function()
+            Reporter.runParallel(function()
+                Brain.run()
+            end)
+        end,
+        function()
+            Commander.listen()
+        end
+    )
 end

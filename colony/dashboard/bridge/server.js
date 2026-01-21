@@ -26,6 +26,10 @@ let colonyData = {
     }
 };
 
+// Command queue - commands waiting to be picked up by bridge
+let commandQueue = [];
+let commandId = 1;
+
 // Connected WebSocket clients
 let wsClients = [];
 
@@ -59,6 +63,19 @@ wsServer.on('upgrade', (req, socket) => {
     
     socket.on('error', () => {
         wsClients = wsClients.filter(c => c !== socket);
+    });
+
+    // Handle incoming WebSocket messages (commands from dashboard)
+    socket.on('data', (buffer) => {
+        try {
+            const data = parseWebSocketFrame(buffer);
+            if (data) {
+                const msg = JSON.parse(data);
+                handleDashboardCommand(msg);
+            }
+        } catch (e) {
+            // Ignore parse errors
+        }
     });
 });
 
@@ -95,6 +112,62 @@ function sendToClient(socket, data) {
 
 function broadcast(data) {
     wsClients.forEach(client => sendToClient(client, data));
+}
+
+// Parse incoming WebSocket frame (unmask client data)
+function parseWebSocketFrame(buffer) {
+    if (buffer.length < 2) return null;
+    
+    const secondByte = buffer[1];
+    const isMasked = Boolean((secondByte >> 7) & 0x1);
+    let payloadLength = secondByte & 0x7F;
+    let offset = 2;
+    
+    if (payloadLength === 126) {
+        payloadLength = buffer.readUInt16BE(2);
+        offset = 4;
+    } else if (payloadLength === 127) {
+        payloadLength = Number(buffer.readBigUInt64BE(2));
+        offset = 10;
+    }
+    
+    let mask = null;
+    if (isMasked) {
+        mask = buffer.slice(offset, offset + 4);
+        offset += 4;
+    }
+    
+    const payload = buffer.slice(offset, offset + payloadLength);
+    
+    if (isMasked && mask) {
+        for (let i = 0; i < payload.length; i++) {
+            payload[i] ^= mask[i % 4];
+        }
+    }
+    
+    return payload.toString('utf8');
+}
+
+// Handle commands from dashboard
+function handleDashboardCommand(msg) {
+    if (msg.type !== 'command') return;
+    
+    const cmd = {
+        id: commandId++,
+        targetId: msg.targetId,        // Specific turtle ID or 'all'
+        command: msg.command,          // Command name
+        args: msg.args || {},          // Command arguments
+        timestamp: Date.now(),
+        status: 'pending'
+    };
+    
+    commandQueue.push(cmd);
+    addEvent('command', `Command sent: ${cmd.command} to ${cmd.targetId === 'all' ? 'all turtles' : 'Turtle #' + cmd.targetId}`);
+    
+    // Broadcast command acknowledgment
+    broadcast({ type: 'command_ack', data: cmd });
+    
+    console.log(`[CMD] Queued: ${cmd.command} for ${cmd.targetId}`);
 }
 
 // HTTP Server for both API and static files
@@ -134,6 +207,58 @@ const server = http.createServer((req, res) => {
     if (url.pathname === '/api/status') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(colonyData));
+        return;
+    }
+    
+    // API: Get pending commands (Bridge polls this)
+    if (url.pathname === '/api/commands' && req.method === 'GET') {
+        const pending = commandQueue.filter(c => c.status === 'pending');
+        // Mark as sent
+        pending.forEach(c => c.status = 'sent');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ commands: pending }));
+        return;
+    }
+    
+    // API: Send command (alternative HTTP method)
+    if (url.pathname === '/api/command' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', () => {
+            try {
+                const msg = JSON.parse(body);
+                handleDashboardCommand({ type: 'command', ...msg });
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true }));
+            } catch (e) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: e.message }));
+            }
+        });
+        return;
+    }
+    
+    // API: Command result from bridge
+    if (url.pathname === '/api/command-result' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', () => {
+            try {
+                const result = JSON.parse(body);
+                const cmd = commandQueue.find(c => c.id === result.commandId);
+                if (cmd) {
+                    cmd.status = result.success ? 'completed' : 'failed';
+                    cmd.result = result;
+                }
+                addEvent('command_result', `Command ${result.success ? 'completed' : 'failed'}: ${result.message || ''}`);
+                broadcast({ type: 'command_result', data: result });
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true }));
+            } catch (e) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: e.message }));
+            }
+        });
         return;
     }
     

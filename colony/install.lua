@@ -1,8 +1,8 @@
--- GENESIS COLONY INSTALLER - ALL IN ONE
--- Just paste this and run. No downloads needed!
+-- GENESIS COLONY INSTALLER
 print("========================================")
 print("  GENESIS COLONY - INSTALLER")
 print("========================================")
+
 fs.makeDir("/colony")
 fs.makeDir("/colony/lib")
 fs.makeDir("/colony/roles")
@@ -10,363 +10,917 @@ print("Created directories")
 
 local function w(path, content)
     local f = fs.open(path, "w")
-    if f then f.write(content); f.close(); print("  + "..path); return true end
-    print("  ! "..path); return false
+    if f then
+        f.write(content)
+        f.close()
+        print("  + " .. path)
+        return true
+    end
+    print("  ! " .. path)
+    return false
 end
 
--- LIB/STATE
+-- STATE
 w("/colony/lib/state.lua", [[
 local S = {}
 local file = "/.colony/state.json"
 local data = {}
+
 function S.load()
     if fs.exists(file) then
         local f = fs.open(file, "r")
-        if f then data = textutils.unserializeJSON(f.readAll()) or {}; f.close() end
+        if f then
+            local txt = f.readAll()
+            f.close()
+            data = textutils.unserializeJSON(txt) or {}
+        end
     end
     return data
 end
+
 function S.save()
-    if not fs.exists("/.colony") then fs.makeDir("/.colony") end
+    if not fs.exists("/.colony") then
+        fs.makeDir("/.colony")
+    end
     local f = fs.open(file, "w")
-    if f then f.write(textutils.serializeJSON(data)); f.close() end
+    if f then
+        f.write(textutils.serializeJSON(data))
+        f.close()
+    end
 end
+
 function S.get(k)
     if not k then return data end
-    local v = data
-    for p in k:gmatch("[^.]+") do if type(v)~="table" then return nil end; v=v[p] end
-    return v
+    return data[k]
 end
+
 function S.set(k, val)
-    local ps = {}
-    for p in k:gmatch("[^.]+") do table.insert(ps, p) end
-    local t = data
-    for i=1,#ps-1 do if type(t[ps[i]])~="table" then t[ps[i]]={} end; t=t[ps[i]] end
-    t[ps[#ps]] = val
+    data[k] = val
     S.save()
 end
+
 return S
 ]])
 
--- LIB/NAV
+-- NAV
 w("/colony/lib/nav.lua", [[
 local N = {}
-local pos = {x=0,y=0,z=0}
+local pos = {x=0, y=0, z=0}
 local facing = 0
-local home = {x=0,y=0,z=0}
-local D = {{x=0,z=-1},{x=1,z=0},{x=0,z=1},{x=-1,z=0}}
-function N.init() if gps then local x,y,z=gps.locate(2); if x then pos={x=x,y=y,z=z} end end end
-function N.getPosition() return {x=pos.x,y=pos.y,z=pos.z} end
-function N.getFacing() return facing end
-function N.setHome(p) home = p or {x=pos.x,y=pos.y,z=pos.z} end
-function N.getHome() return home end
-function N.forward() if turtle.forward() then pos.x=pos.x+D[facing+1].x; pos.z=pos.z+D[facing+1].z; return true end return false end
-function N.back() if turtle.back() then pos.x=pos.x-D[facing+1].x; pos.z=pos.z-D[facing+1].z; return true end return false end
-function N.up() if turtle.up() then pos.y=pos.y+1; return true end return false end
-function N.down() if turtle.down() then pos.y=pos.y-1; return true end return false end
-function N.turnLeft() turtle.turnLeft(); facing=(facing-1)%4 end
-function N.turnRight() turtle.turnRight(); facing=(facing+1)%4 end
-function N.face(d) while facing~=d do N.turnRight() end end
-function N.digForward() while turtle.detect() do turtle.dig(); sleep(0.3) end return N.forward() end
-function N.digUp() while turtle.detectUp() do turtle.digUp(); sleep(0.3) end return N.up() end
-function N.digDown() turtle.digDown(); return N.down() end
-function N.goTo(tx,ty,tz)
-    while pos.y<ty do if not N.digUp() then break end end
-    while pos.y>ty do if not N.digDown() then break end end
-    while pos.x<tx do N.face(1); if not N.digForward() then break end end
-    while pos.x>tx do N.face(3); if not N.digForward() then break end end
-    while pos.z<tz do N.face(2); if not N.digForward() then break end end
-    while pos.z>tz do N.face(0); if not N.digForward() then break end end
+local home = {x=0, y=0, z=0}
+local D = {{x=0,z=-1}, {x=1,z=0}, {x=0,z=1}, {x=-1,z=0}}
+
+function N.init()
+    if gps then
+        local x, y, z = gps.locate(2)
+        if x then
+            pos = {x=x, y=y, z=z}
+        end
+    end
 end
-function N.goHome() N.goTo(home.x,home.y,home.z) end
+
+function N.getPosition()
+    return {x=pos.x, y=pos.y, z=pos.z}
+end
+
+function N.getFacing()
+    return facing
+end
+
+function N.setHome(p)
+    if p then
+        home = p
+    else
+        home = {x=pos.x, y=pos.y, z=pos.z}
+    end
+end
+
+function N.getHome()
+    return home
+end
+
+function N.forward()
+    if turtle.forward() then
+        pos.x = pos.x + D[facing+1].x
+        pos.z = pos.z + D[facing+1].z
+        return true
+    end
+    return false
+end
+
+function N.back()
+    if turtle.back() then
+        pos.x = pos.x - D[facing+1].x
+        pos.z = pos.z - D[facing+1].z
+        return true
+    end
+    return false
+end
+
+function N.up()
+    if turtle.up() then
+        pos.y = pos.y + 1
+        return true
+    end
+    return false
+end
+
+function N.down()
+    if turtle.down() then
+        pos.y = pos.y - 1
+        return true
+    end
+    return false
+end
+
+function N.turnLeft()
+    turtle.turnLeft()
+    facing = (facing - 1) % 4
+end
+
+function N.turnRight()
+    turtle.turnRight()
+    facing = (facing + 1) % 4
+end
+
+function N.face(d)
+    while facing ~= d do
+        N.turnRight()
+    end
+end
+
+function N.digForward()
+    while turtle.detect() do
+        turtle.dig()
+        sleep(0.3)
+    end
+    return N.forward()
+end
+
+function N.digUp()
+    while turtle.detectUp() do
+        turtle.digUp()
+        sleep(0.3)
+    end
+    return N.up()
+end
+
+function N.digDown()
+    turtle.digDown()
+    return N.down()
+end
+
+function N.goTo(tx, ty, tz)
+    while pos.y < ty do
+        if not N.digUp() then break end
+    end
+    while pos.y > ty do
+        if not N.digDown() then break end
+    end
+    while pos.x < tx do
+        N.face(1)
+        if not N.digForward() then break end
+    end
+    while pos.x > tx do
+        N.face(3)
+        if not N.digForward() then break end
+    end
+    while pos.z < tz do
+        N.face(2)
+        if not N.digForward() then break end
+    end
+    while pos.z > tz do
+        N.face(0)
+        if not N.digForward() then break end
+    end
+end
+
+function N.goHome()
+    N.goTo(home.x, home.y, home.z)
+end
+
 return N
 ]])
 
--- LIB/INV
+-- INV
 w("/colony/lib/inv.lua", [[
 local I = {}
-local FUEL = {["minecraft:coal"]=80,["minecraft:charcoal"]=80,["minecraft:coal_block"]=800}
-local ORES = {"diamond","emerald","gold","iron","copper","redstone","lapis","coal"}
-local TRASH = {"cobblestone","dirt","gravel","netherrack","cobbled_deepslate","tuff","granite","diorite","andesite"}
-function I.isFuel(n) return FUEL[n]~=nil end
-function I.isOre(n) for _,o in ipairs(ORES) do if n:find(o) then return true end end return false end
-function I.isTrash(n) for _,t in ipairs(TRASH) do if n:find(t) then return true end end return false end
-function I.freeSlots() local c=0; for i=1,16 do if turtle.getItemCount(i)==0 then c=c+1 end end return c end
-function I.isFull() return I.freeSlots()==0 end
-function I.refuel(min)
-    min=min or 1000
-    while turtle.getFuelLevel()<min do
-        local found=false
-        for i=1,16 do local it=turtle.getItemDetail(i); if it and I.isFuel(it.name) then turtle.select(i); if turtle.refuel(1) then found=true; break end end end
-        if not found then break end
+
+function I.freeSlots()
+    local c = 0
+    for i = 1, 16 do
+        if turtle.getItemCount(i) == 0 then
+            c = c + 1
+        end
     end
-    turtle.select(1); return turtle.getFuelLevel()
+    return c
 end
-function I.dropTrash() for i=1,16 do local it=turtle.getItemDetail(i); if it and I.isTrash(it.name) then turtle.select(i); turtle.drop() end end turtle.select(1) end
-function I.dumpToChest() for i=1,16 do if turtle.getItemCount(i)>0 then turtle.select(i); turtle.drop() end end turtle.select(1) end
-function I.countItem(n) local c=0; for i=1,16 do local it=turtle.getItemDetail(i); if it and it.name:find(n) then c=c+it.count end end return c end
-function I.findItem(n) for i=1,16 do local it=turtle.getItemDetail(i); if it and it.name:find(n) then return i end end return nil end
+
+function I.isFull()
+    return I.freeSlots() == 0
+end
+
+function I.refuel(min)
+    min = min or 1000
+    for i = 1, 16 do
+        if turtle.getFuelLevel() >= min then break end
+        turtle.select(i)
+        turtle.refuel()
+    end
+    turtle.select(1)
+    return turtle.getFuelLevel()
+end
+
+function I.dropTrash()
+    local trash = {"cobblestone", "dirt", "gravel", "netherrack", "granite", "diorite", "andesite"}
+    for i = 1, 16 do
+        local it = turtle.getItemDetail(i)
+        if it then
+            for _, t in ipairs(trash) do
+                if it.name:find(t) then
+                    turtle.select(i)
+                    turtle.drop()
+                    break
+                end
+            end
+        end
+    end
+    turtle.select(1)
+end
+
+function I.dumpToChest()
+    for i = 1, 16 do
+        if turtle.getItemCount(i) > 0 then
+            turtle.select(i)
+            turtle.drop()
+        end
+    end
+    turtle.select(1)
+end
+
+function I.countItem(n)
+    local c = 0
+    for i = 1, 16 do
+        local it = turtle.getItemDetail(i)
+        if it and it.name:find(n) then
+            c = c + it.count
+        end
+    end
+    return c
+end
+
+function I.findItem(n)
+    for i = 1, 16 do
+        local it = turtle.getItemDetail(i)
+        if it and it.name:find(n) then
+            return i
+        end
+    end
+    return nil
+end
+
 return I
 ]])
 
--- LIB/COMMS
+-- COMMS
 w("/colony/lib/comms.lua", [[
 local C = {}
 local proto = "COLONY"
-C.MSG = {PING="ping",PONG="pong",HELLO="hello",HEARTBEAT="heartbeat"}
-function C.hasModem() for _,s in ipairs({"top","bottom","left","right","front","back"}) do if peripheral.getType(s)=="modem" then return true,s end end return false end
-function C.open() local h,s=C.hasModem(); if h then rednet.open(s); return true end return false end
-function C.broadcast(t,d) rednet.broadcast({type=t,data=d,from=os.getComputerID()},proto) end
-function C.send(id,t,d) rednet.send(id,{type=t,data=d,from=os.getComputerID()},proto) end
-function C.receive(to) return rednet.receive(proto,to or 1) end
-function C.announce(e,d) C.broadcast(C.MSG.HELLO,{event=e,label=os.getComputerLabel() or ("T-"..os.getComputerID()),data=d}) end
-function C.setupDefaultHandlers() end
+
+function C.hasModem()
+    for _, s in ipairs({"top","bottom","left","right","front","back"}) do
+        if peripheral.getType(s) == "modem" then
+            return true, s
+        end
+    end
+    return false
+end
+
+function C.open()
+    local h, s = C.hasModem()
+    if h then
+        rednet.open(s)
+        return true
+    end
+    return false
+end
+
+function C.broadcast(t, d)
+    rednet.broadcast({type=t, data=d, from=os.getComputerID()}, proto)
+end
+
+function C.send(id, t, d)
+    rednet.send(id, {type=t, data=d, from=os.getComputerID()}, proto)
+end
+
+function C.receive(to)
+    return rednet.receive(proto, to or 1)
+end
+
+function C.announce(e, d)
+    C.broadcast("hello", {event=e, label=os.getComputerLabel() or "T-"..os.getComputerID(), data=d})
+end
+
 return C
 ]])
 
--- LIB/REPORTER
+-- REPORTER
 w("/colony/lib/reporter.lua", [[
 local R = {}
-local Nav,Inv,State,Comms
-function R.init(n,i,s,c) Nav=n;Inv=i;State=s;Comms=c end
-function R.buildReport()
-    return {id=os.getComputerID(),label=os.getComputerLabel() or ("T-"..os.getComputerID()),
-        role=State and State.get("role") or "?",generation=State and State.get("generation") or 0,
-        position=Nav and Nav.getPosition() or {x=0,y=0,z=0},fuel=turtle.getFuelLevel(),
-        fuelLimit=turtle.getFuelLimit(),state=State and State.get("currentState") or "idle"}
+local Nav, Inv, State, Comms
+
+function R.init(n, i, s, c)
+    Nav = n
+    Inv = i
+    State = s
+    Comms = c
 end
-function R.heartbeat() if Comms then Comms.broadcast("heartbeat",R.buildReport()) end end
-function R.startReporting() while true do R.heartbeat(); sleep(5) end end
-function R.runParallel(fn) parallel.waitForAll(fn,R.startReporting) end
+
+function R.buildReport()
+    return {
+        id = os.getComputerID(),
+        label = os.getComputerLabel() or "T-"..os.getComputerID(),
+        role = State and State.get("role") or "?",
+        generation = State and State.get("generation") or 0,
+        position = Nav and Nav.getPosition() or {x=0,y=0,z=0},
+        fuel = turtle.getFuelLevel(),
+        fuelLimit = turtle.getFuelLimit(),
+        state = State and State.get("currentState") or "idle"
+    }
+end
+
+function R.heartbeat()
+    if Comms then
+        Comms.broadcast("heartbeat", R.buildReport())
+    end
+end
+
+function R.startReporting()
+    while true do
+        R.heartbeat()
+        sleep(5)
+    end
+end
+
+function R.runParallel(fn)
+    parallel.waitForAll(fn, R.startReporting)
+end
+
 return R
 ]])
 
--- ROLES/MINER
+-- COMMANDER (Remote Control)
+w("/colony/lib/commander.lua", [[
+local Cmd = {}
+local Nav, Inv, State, Comms, Miner, Crafter, Brain
+local handlers = {}
+local shouldStop = false
+
+function Cmd.init(n, i, s, c, m, cr, b)
+    Nav = n
+    Inv = i
+    State = s
+    Comms = c
+    Miner = m
+    Crafter = cr
+    Brain = b
+end
+
+function Cmd.register(name, fn)
+    handlers[name] = fn
+end
+
+function Cmd.execute(cmd, args)
+    args = args or {}
+    shouldStop = false
+    local h = handlers[cmd]
+    if h then
+        local ok, res = pcall(h, args)
+        return ok, ok and (res or "OK") or tostring(res)
+    end
+    return false, "Unknown: " .. cmd
+end
+
+function Cmd.reportResult(id, ok, msg)
+    if Comms then
+        Comms.broadcast("command_result", {commandId=id, success=ok, message=msg})
+    end
+end
+
+-- Movement
+Cmd.register("forward", function(a) for i=1,(a.count or 1) do if Nav then Nav.forward(a.dig) else turtle.forward() end end return "Moved" end)
+Cmd.register("back", function(a) for i=1,(a.count or 1) do if Nav then Nav.back() else turtle.back() end end return "Moved" end)
+Cmd.register("up", function(a) for i=1,(a.count or 1) do if Nav then Nav.up(a.dig) else turtle.up() end end return "Moved" end)
+Cmd.register("down", function(a) for i=1,(a.count or 1) do if Nav then Nav.down(a.dig) else turtle.down() end end return "Moved" end)
+Cmd.register("turnLeft", function() if Nav then Nav.turnLeft() else turtle.turnLeft() end return "Turned" end)
+Cmd.register("turnRight", function() if Nav then Nav.turnRight() else turtle.turnRight() end return "Turned" end)
+Cmd.register("turnAround", function() turtle.turnRight() turtle.turnRight() return "Turned" end)
+
+-- Digging & Placing
+Cmd.register("dig", function() return turtle.dig() and "Dug" or "Nothing" end)
+Cmd.register("digUp", function() return turtle.digUp() and "Dug" or "Nothing" end)
+Cmd.register("digDown", function() return turtle.digDown() and "Dug" or "Nothing" end)
+Cmd.register("place", function() return turtle.place() and "Placed" or "Failed" end)
+Cmd.register("placeUp", function() return turtle.placeUp() and "Placed" or "Failed" end)
+Cmd.register("placeDown", function() return turtle.placeDown() and "Placed" or "Failed" end)
+Cmd.register("suck", function(a) return turtle.suck(a.count) and "Got items" or "Nothing" end)
+Cmd.register("attack", function() return turtle.attack() and "Attacked" or "Nothing" end)
+Cmd.register("inspect", function() local ok,d=turtle.inspect() return ok and d.name or "Empty" end)
+
+-- Inventory
+Cmd.register("refuel", function(a) if Inv then return "Fuel: "..Inv.refuel(a.amount or 1000) else turtle.refuel() return "Fuel: "..turtle.getFuelLevel() end end)
+Cmd.register("dropTrash", function() if Inv then Inv.dropTrash() return "Dropped" end return "No Inv" end)
+Cmd.register("dumpToChest", function() if Inv then Inv.dumpToChest() return "Dumped" end for s=1,16 do turtle.select(s) turtle.drop() end return "Dumped" end)
+Cmd.register("dropAll", function() for s=1,16 do turtle.select(s) turtle.drop() end turtle.select(1) return "Dropped" end)
+Cmd.register("fuel", function() return "Fuel: "..turtle.getFuelLevel().."/"..turtle.getFuelLimit() end)
+Cmd.register("inventory", function()
+    local t=0 for s=1,16 do t=t+turtle.getItemCount(s) end
+    return "Items: "..t.." Free: "..(16-Inv.freeSlots())
+end)
+
+-- Navigation
+Cmd.register("goHome", function() if Nav then State.set("currentState","returning") Nav.goHome() State.set("currentState","idle") return "Home" end return "No Nav" end)
+Cmd.register("goTo", function(a) if Nav and a.x and a.y and a.z then Nav.goTo(a.x,a.y,a.z) return "Arrived" end return "Missing coords" end)
+Cmd.register("setHome", function() if Nav then Nav.setHome() return "Home set" end return "No Nav" end)
+Cmd.register("locate", function() local x,y,z=gps.locate(2) if x then return x..","..y..","..z end return "No GPS" end)
+Cmd.register("position", function() if Nav then local p=Nav.getPosition() return p.x..","..p.y..","..p.z end return "No Nav" end)
+
+-- Mining Tasks
+Cmd.register("mine", function(a) if not Miner then return "No Miner" end State.set("currentState","mining") local r=Miner.run() State.set("currentState","idle") return "Mined "..tostring(r) end)
+Cmd.register("quarry", function(a) if not Miner then return "No Miner" end Miner.configure({quarrySize=a.size or 8}) State.set("currentState","quarrying") Miner.quarryMine() State.set("currentState","idle") return "Quarry done" end)
+Cmd.register("tunnel", function(a) if not Miner then return "No Miner" end Miner.configure({tunnelLength=a.length or 50}) State.set("currentState","tunneling") Miner.tunnelMine() State.set("currentState","idle") return "Tunnel done" end)
+Cmd.register("branch", function(a) if not Miner then return "No Miner" end State.set("currentState","mining") Miner.branchMine() State.set("currentState","idle") return "Branch done" end)
+
+-- Crafting & Replication
+Cmd.register("craft", function(a) if not Crafter then return "No Crafter" end local ok,r=Crafter.craft(a.recipe or a.item,a.count or 1) return ok and "Crafted "..r or "Failed: "..tostring(r) end)
+Cmd.register("canCraft", function(a) if not Crafter then return "No Crafter" end local ok,m=Crafter.canCraft(a.recipe) return ok and "Yes" or "Missing: "..textutils.serialize(m) end)
+Cmd.register("replicate", function(a) if not Crafter then return "No Crafter" end local ok,m=Crafter.canBirthTurtle() if not ok then return "Need: "..textutils.serialize(m) end local s,r=Crafter.birthTurtle((State.get("generation") or 0)+1) return s and "Replicated!" or "Failed: "..r end)
+Cmd.register("canReplicate", function() if not Crafter then return "No Crafter" end local ok,m=Crafter.canBirthTurtle() return ok and "Ready!" or "Need: "..textutils.serialize(m) end)
+
+-- Control
+Cmd.register("stop", function() shouldStop=true if State then State.set("currentState","idle") State.set("shouldStop",true) end return "Stopped" end)
+Cmd.register("pause", function() shouldStop=true if State then State.set("currentState","paused") end return "Paused" end)
+Cmd.register("resume", function() shouldStop=false if State then State.set("shouldStop",false) end return "Resumed" end)
+Cmd.register("auto", function() if not Brain then return "No Brain" end shouldStop=false Brain.run() return "Auto done" end)
+Cmd.register("status", function() return "ID:"..os.getComputerID().." Fuel:"..turtle.getFuelLevel().." State:"..(State and State.get("currentState") or "?") end)
+Cmd.register("dance", function() for i=1,4 do turtle.turnLeft() sleep(0.2) end for i=1,4 do turtle.turnRight() sleep(0.2) end return "Dance!" end)
+
+-- Custom code execution
+Cmd.register("exec", function(a)
+    local fn,e=load(a.code,"remote","t",{turtle=turtle,Nav=Nav,Inv=Inv,State=State,sleep=sleep,print=print})
+    if not fn then return "Err: "..e end
+    local ok,r=pcall(fn)
+    return ok and tostring(r or "OK") or "Err: "..r
+end)
+
+function Cmd.handleMessage(sid, msg)
+    if msg.type == "command" then
+        print("[CMD] "..msg.command)
+        local ok, res = Cmd.execute(msg.command, msg.args)
+        print("  -> "..(ok and "OK" or "FAIL")..": "..res)
+        if msg.commandId then Cmd.reportResult(msg.commandId, ok, res) end
+        return true
+    end
+    return false
+end
+
+function Cmd.listen()
+    while true do
+        if Comms then
+            local sid, msg = Comms.receive(1)
+            if sid and msg then Cmd.handleMessage(sid, msg) end
+        else sleep(1) end
+    end
+end
+
+return Cmd
+]])
+
+-- MINER
 w("/colony/roles/miner.lua", [[
 local M = {}
-local Nav,Inv,State,Comms
-local cfg = {branchLength=20,branchSpacing=3,minFuel=300}
-M.PATTERNS = {BRANCH="branch",TUNNEL="tunnel"}
-function M.init(n,i,s,c) Nav=n;Inv=i;State=s;Comms=c end
-function M.shouldReturn() if Inv.isFull() then return true,"full" end if turtle.getFuelLevel()<cfg.minFuel then return true,"fuel" end return false end
+local Nav, Inv, State, Comms
+local branchLength = 20
+local minFuel = 300
+
+function M.init(n, i, s, c)
+    Nav = n
+    Inv = i
+    State = s
+    Comms = c
+end
+
+function M.shouldReturn()
+    if Inv.isFull() then return true, "full" end
+    if turtle.getFuelLevel() < minFuel then return true, "fuel" end
+    return false
+end
+
 function M.mineBranch(len)
-    len=len or cfg.branchLength; local mined=0
-    for i=1,len do
-        local r,why=M.shouldReturn()
-        if r then Nav.goHome(); if why=="full" then Inv.dumpToChest() else Inv.refuel(1000) end return mined end
+    len = len or branchLength
+    local mined = 0
+    for i = 1, len do
+        local r, why = M.shouldReturn()
+        if r then
+            Nav.goHome()
+            if why == "full" then
+                Inv.dumpToChest()
+            else
+                Inv.refuel(1000)
+            end
+            return mined
+        end
         if not Nav.digForward() then break end
-        Nav.digUp(); mined=mined+2
+        Nav.digUp()
+        mined = mined + 2
     end
     return mined
 end
-function M.run(pat)
-    pat=pat or M.PATTERNS.BRANCH; print("[MINER] "..pat); local total=0
-    if pat==M.PATTERNS.BRANCH then
-        for b=1,10 do
-            total=total+M.mineBranch()
-            Nav.turnRight();Nav.turnRight()
-            for i=1,cfg.branchLength do Nav.forward() end
-            Nav.turnRight();Nav.turnRight();Nav.turnRight()
-            for i=1,cfg.branchSpacing do Nav.digForward() end
-            Nav.turnLeft()
+
+function M.run()
+    print("[MINER] Starting...")
+    local total = 0
+    for b = 1, 5 do
+        total = total + M.mineBranch()
+        Nav.turnRight()
+        Nav.turnRight()
+        for i = 1, branchLength do
+            Nav.forward()
         end
-    else total=M.mineBranch(100) end
-    Nav.goHome(); return total
+        Nav.turnRight()
+        for i = 1, 3 do
+            Nav.digForward()
+        end
+        Nav.turnRight()
+    end
+    Nav.goHome()
+    return total
 end
+
 return M
 ]])
 
--- ROLES/CRAFTER
+-- CRAFTER
 w("/colony/roles/crafter.lua", [[
 local C = {}
-local Nav,Inv,State,Comms
-function C.init(n,i,s,c) Nav=n;Inv=i;State=s;Comms=c end
-function C.canCraftTurtle() return Inv.countItem("iron_ingot")>=7 and Inv.countItem("redstone")>=1 and Inv.countItem("diamond")>=3 end
+local Nav, Inv, State, Comms
+
+function C.init(n, i, s, c)
+    Nav = n
+    Inv = i
+    State = s
+    Comms = c
+end
+
+function C.canCraftTurtle()
+    return Inv.countItem("iron_ingot") >= 7 and Inv.countItem("diamond") >= 1
+end
+
 function C.birthTurtle()
-    local s=Inv.findItem("turtle")
-    if s then turtle.select(s);turtle.place();peripheral.call("front","turnOn");sleep(2);return true end
+    local s = Inv.findItem("turtle")
+    if s then
+        turtle.select(s)
+        turtle.place()
+        peripheral.call("front", "turnOn")
+        sleep(2)
+        return true
+    end
     return false
 end
+
 return C
 ]])
 
 -- BRAIN
 w("/colony/brain.lua", [[
 local B = {}
-local Nav,Inv,State,Comms,Miner,Crafter
-local running=false
-function B.init(n,i,s,c,m,cr) Nav=n;Inv=i;State=s;Comms=c;Miner=m;Crafter=cr end
+local Nav, Inv, State, Comms, Miner, Crafter
+local running = false
+
+function B.init(n, i, s, c, m, cr)
+    Nav = n
+    Inv = i
+    State = s
+    Comms = c
+    Miner = m
+    Crafter = cr
+end
+
 function B.assess()
-    local d={}
-    if turtle.getFuelLevel()<100 then table.insert(d,{p=100,a="refuel"}) end
-    if Inv.isFull() then table.insert(d,{p=90,a="dump"}) end
-    if Crafter and Crafter.canCraftTurtle() then table.insert(d,{p=80,a="birth"}) end
-    table.insert(d,{p=50,a="mine"})
-    table.sort(d,function(a,b) return a.p>b.p end)
-    return d[1]
+    if turtle.getFuelLevel() < 100 then
+        return {a = "refuel"}
+    end
+    if Inv.isFull() then
+        return {a = "dump"}
+    end
+    return {a = "mine"}
 end
+
 function B.execute(dec)
-    State.set("currentState",dec.a)
-    if dec.a=="refuel" then Nav.goHome();Inv.refuel(1000)
-    elseif dec.a=="dump" then Nav.goHome();Inv.dropTrash();Inv.dumpToChest()
-    elseif dec.a=="birth" then Nav.goHome();Crafter.birthTurtle()
-    elseif dec.a=="mine" then Miner.run() end
-    State.set("currentState","idle")
+    State.set("currentState", dec.a)
+    if dec.a == "refuel" then
+        Nav.goHome()
+        Inv.refuel(1000)
+    elseif dec.a == "dump" then
+        Nav.goHome()
+        Inv.dropTrash()
+        Inv.dumpToChest()
+    elseif dec.a == "mine" then
+        Miner.run()
+    end
+    State.set("currentState", "idle")
 end
-function B.run() running=true; while running do local d=B.assess();print("[BRAIN] "..d.a);B.execute(d);sleep(1) end end
-function B.stop() running=false end
+
+function B.run()
+    running = true
+    while running do
+        local d = B.assess()
+        print("[BRAIN] " .. d.a)
+        B.execute(d)
+        sleep(1)
+    end
+end
+
+function B.stop()
+    running = false
+end
+
 return B
 ]])
 
 -- STARTUP
 w("/colony/startup.lua", [[
 print("=== GENESIS COLONY ===")
-local function ld(p) if fs.exists(p..".lua") then return dofile(p..".lua") elseif fs.exists(p) then return dofile(p) else error("Missing: "..p) end end
-local State=ld("/colony/lib/state")
-local Nav=ld("/colony/lib/nav")
-local Inv=ld("/colony/lib/inv")
-local Comms=ld("/colony/lib/comms")
-local Reporter=ld("/colony/lib/reporter")
-local Miner=ld("/colony/roles/miner")
-local Crafter=ld("/colony/roles/crafter")
-local Brain=ld("/colony/brain")
-local function getId()
-    if fs.exists("/.colony/state.json") then
-        local f=fs.open("/.colony/state.json","r")
-        if f then local d=textutils.unserializeJSON(f.readAll());f.close();if d then return d.role or "worker",d.generation or 0 end end
+
+local function ld(p)
+    if fs.exists(p .. ".lua") then
+        return dofile(p .. ".lua")
+    elseif fs.exists(p) then
+        return dofile(p)
+    else
+        error("Missing: " .. p)
     end
-    local l=os.getComputerLabel() or ""
-    if l:find("Eve") then return "eve",0 end
-    return "newborn",-1
 end
-local role,gen=getId(); print("Role: "..role)
-State.load();Nav.init()
-if Comms.hasModem() then Comms.open();print("[OK] Modem") end
-Reporter.init(Nav,Inv,State,Comms)
-Miner.init(Nav,Inv,State,Comms)
-Crafter.init(Nav,Inv,State,Comms)
-Brain.init(Nav,Inv,State,Comms,Miner,Crafter)
-if role=="eve" then dofile("/colony/eve.lua")
+
+local State = ld("/colony/lib/state")
+local Nav = ld("/colony/lib/nav")
+local Inv = ld("/colony/lib/inv")
+local Comms = ld("/colony/lib/comms")
+local Reporter = ld("/colony/lib/reporter")
+local Commander = ld("/colony/lib/commander")
+local Miner = ld("/colony/roles/miner")
+local Crafter = ld("/colony/roles/crafter")
+local Brain = ld("/colony/brain")
+
+local l = os.getComputerLabel() or ""
+local role = "worker"
+if l:find("Eve") then role = "eve" end
+
+print("Role: " .. role)
+State.load()
+Nav.init()
+
+if Comms.hasModem() then
+    Comms.open()
+    print("[OK] Modem")
+end
+
+Reporter.init(Nav, Inv, State, Comms)
+Miner.init(Nav, Inv, State, Comms)
+Crafter.init(Nav, Inv, State, Comms)
+Commander.init(Nav, Inv, State, Comms, Miner, Crafter, Brain)
+Brain.init(Nav, Inv, State, Comms, Miner, Crafter)
+
+if role == "eve" then
+    dofile("/colony/eve.lua")
 else
-    if role=="newborn" then State.set("role","worker");State.set("generation",1);os.setComputerLabel("Worker-"..os.getComputerID());Nav.setHome() end
-    Reporter.runParallel(function() Brain.run() end)
+    State.set("role", "worker")
+    Nav.setHome()
+    parallel.waitForAny(
+        function() Reporter.runParallel(function() Brain.run() end) end,
+        function() Commander.listen() end
+    )
 end
 ]])
 
 -- EVE
 w("/colony/eve.lua", [[
 print("=== EVE ===")
-local function ld(p) if fs.exists(p..".lua") then return dofile(p..".lua") else return dofile(p) end end
-local State=ld("/colony/lib/state")
-local Nav=ld("/colony/lib/nav")
-local Inv=ld("/colony/lib/inv")
-local Comms=ld("/colony/lib/comms")
-local Reporter=ld("/colony/lib/reporter")
-local Miner=ld("/colony/roles/miner")
-local Crafter=ld("/colony/roles/crafter")
-local Brain=ld("/colony/brain")
-State.load();State.set("role","eve");State.set("generation",0)
-Nav.init();Nav.setHome()
-if Comms.hasModem() then Comms.open();Comms.announce("eve_online");print("[OK] Modem") end
-Reporter.init(Nav,Inv,State,Comms)
-Miner.init(Nav,Inv,State,Comms)
-Crafter.init(Nav,Inv,State,Comms)
-Brain.init(Nav,Inv,State,Comms,Miner,Crafter)
+
+local function ld(p)
+    if fs.exists(p .. ".lua") then
+        return dofile(p .. ".lua")
+    else
+        return dofile(p)
+    end
+end
+
+local State = ld("/colony/lib/state")
+local Nav = ld("/colony/lib/nav")
+local Inv = ld("/colony/lib/inv")
+local Comms = ld("/colony/lib/comms")
+local Reporter = ld("/colony/lib/reporter")
+local Commander = ld("/colony/lib/commander")
+local Miner = ld("/colony/roles/miner")
+local Crafter = ld("/colony/roles/crafter")
+local Brain = ld("/colony/brain")
+
+State.load()
+State.set("role", "eve")
+State.set("generation", 0)
+Nav.init()
+Nav.setHome()
+
+if Comms.hasModem() then
+    Comms.open()
+    Comms.announce("eve_online")
+    print("[OK] Modem")
+end
+
+Reporter.init(Nav, Inv, State, Comms)
+Miner.init(Nav, Inv, State, Comms)
+Crafter.init(Nav, Inv, State, Comms)
+Commander.init(Nav, Inv, State, Comms, Miner, Crafter, Brain)
+Brain.init(Nav, Inv, State, Comms, Miner, Crafter)
+
 while true do
-    print("\n=== MENU ===")
-    print("1.Auto 2.Mine 3.Home 4.Fuel 5.Status 6.Test 0.Exit")
-    write("> ");local c=read()
-    if c=="1" then Reporter.runParallel(function() Brain.run() end)
-    elseif c=="2" then print("Mined: "..Miner.run())
-    elseif c=="3" then Nav.goHome();print("Home!")
-    elseif c=="4" then print("Fuel: "..Inv.refuel(1000))
-    elseif c=="5" then print("ID:"..os.getComputerID().." Fuel:"..turtle.getFuelLevel())
-    elseif c=="6" then for i=1,3 do Reporter.heartbeat();print("Sent "..i);sleep(1) end
-    elseif c=="0" then return end
+    print("")
+    print("=== MENU ===")
+    print("1.Auto 2.Mine 3.Home 4.Fuel 5.Status 6.Test 7.Remote 0.Exit")
+    write("> ")
+    local c = read()
+    
+    if c == "1" then
+        parallel.waitForAny(
+            function() Reporter.runParallel(function() Brain.run() end) end,
+            function() Commander.listen() end
+        )
+    elseif c == "2" then
+        print("Mined: " .. Miner.run())
+    elseif c == "3" then
+        Nav.goHome()
+        print("Home!")
+    elseif c == "4" then
+        print("Fuel: " .. Inv.refuel(1000))
+    elseif c == "5" then
+        print("ID: " .. os.getComputerID())
+        print("Fuel: " .. turtle.getFuelLevel())
+    elseif c == "6" then
+        for i = 1, 3 do
+            Reporter.heartbeat()
+            print("Sent " .. i)
+            sleep(1)
+        end
+    elseif c == "7" then
+        print("Remote Control Mode (Ctrl+T to exit)")
+        parallel.waitForAny(
+            function() while true do Reporter.heartbeat() sleep(5) end end,
+            function() Commander.listen() end
+        )
+    elseif c == "0" then
+        return
+    end
 end
 ]])
 
 -- TEST
 w("/colony/test.lua", [[
 print("=== TEST ===")
-local m=nil
-for _,s in ipairs({"top","bottom","left","right","front","back"}) do if peripheral.getType(s)=="modem" then m=s;break end end
-if m then print("[OK] Modem: "..m);rednet.open(m) else print("[ERROR] No modem!");return end
-print("ID: "..os.getComputerID())
-print("Label: "..(os.getComputerLabel() or "NOT SET"))
+
+local m = nil
+for _, s in ipairs({"top","bottom","left","right","front","back"}) do
+    if peripheral.getType(s) == "modem" then
+        m = s
+        break
+    end
+end
+
+if m then
+    print("[OK] Modem: " .. m)
+    rednet.open(m)
+else
+    print("[ERROR] No modem!")
+    return
+end
+
+print("ID: " .. os.getComputerID())
+print("Label: " .. (os.getComputerLabel() or "NOT SET"))
 print("Sending 5 broadcasts...")
-for i=1,5 do
-    rednet.broadcast({type="heartbeat",data={id=os.getComputerID(),label=os.getComputerLabel() or "Test",role="eve",position={x=0,y=64,z=0},fuel=turtle.getFuelLevel(),fuelLimit=turtle.getFuelLimit(),state="testing",generation=0}},"COLONY")
-    print("Sent "..i);sleep(2)
+
+for i = 1, 5 do
+    rednet.broadcast({
+        type = "heartbeat",
+        data = {
+            id = os.getComputerID(),
+            label = os.getComputerLabel() or "Test",
+            role = "eve",
+            position = {x=0, y=64, z=0},
+            fuel = turtle.getFuelLevel(),
+            fuelLimit = turtle.getFuelLimit(),
+            state = "testing",
+            generation = 0
+        }
+    }, "COLONY")
+    print("Sent " .. i)
+    sleep(2)
 end
 print("Done!")
 ]])
 
--- BRIDGE (configurable URL)
+-- BRIDGE
 w("/colony/bridge.lua", [[
--- CONFIGURE THIS: Your computer's IP where Node.js runs
--- For local testing: "http://localhost:3000/api/update"
--- For remote server: "http://YOUR_EXTERNAL_IP:3000/api/update"
-local URL = "http://localhost:3000/api/update"
+local URL = "http://localhost:3000"
 
 print("=== COLONY BRIDGE ===")
-print("Dashboard URL: "..URL)
-print("")
+print("URL: " .. URL)
 
--- Find modem
 local m = nil
-for _,s in ipairs({"top","bottom","left","right","front","back"}) do 
-    if peripheral.getType(s) == "modem" then m = s; break end 
+for _, s in ipairs({"top","bottom","left","right","front","back"}) do
+    if peripheral.getType(s) == "modem" then
+        m = s
+        break
+    end
 end
-if not m then print("[ERROR] Attach a modem!"); return end
-print("[OK] Modem: "..m)
+
+if not m then
+    print("[ERROR] No modem!")
+    return
+end
+
+print("[OK] Modem: " .. m)
 rednet.open(m)
 
--- Check HTTP
-if not http then 
-    print("[ERROR] HTTP is disabled!")
-    print("Enable in computercraft-server.toml:")
-    print("  [[http.rules]]")
-    print("  host = \"*\"")
-    print("  action = \"allow\"")
-    return 
+if not http then
+    print("[ERROR] HTTP disabled!")
+    return
 end
-print("[OK] HTTP enabled")
-print("")
-print("Listening for colony broadcasts...")
-print("Press Ctrl+T to stop")
-print("")
 
-local received = 0
-while true do
-    local id, msg = rednet.receive("COLONY", 1)
-    if id and type(msg) == "table" then
-        received = received + 1
-        local lbl = msg.data and msg.data.label or ("ID:"..id)
-        local msgType = msg.type or "?"
-        print(string.format("[%s] #%d %s: %s", os.date("%H:%M:%S"), received, lbl, msgType))
-        
-        local ok, err = pcall(function() 
-            local payload = textutils.serializeJSON({type = msg.type, turtle = msg.data})
-            local response = http.post(URL, payload, {["Content-Type"] = "application/json"})
-            if response then 
-                response.close()
-                print("  -> sent to dashboard")
-            else
-                print("  [!] No response from server")
+print("[OK] HTTP enabled")
+print("Listening + polling commands...")
+
+local lastPoll = 0
+
+local function pollCommands()
+    pcall(function()
+        local r = http.get(URL .. "/api/commands")
+        if r then
+            local data = textutils.unserializeJSON(r.readAll())
+            r.close()
+            if data and data.commands then
+                for _, cmd in ipairs(data.commands) do
+                    print("[CMD] " .. cmd.command .. " -> #" .. tostring(cmd.targetId))
+                    local tid = tonumber(cmd.targetId)
+                    if tid then
+                        rednet.send(tid, {type="command", command=cmd.command, args=cmd.args or {}, commandId=cmd.id}, "COLONY")
+                    else
+                        rednet.broadcast({type="command", command=cmd.command, args=cmd.args or {}, commandId=cmd.id}, "COLONY")
+                    end
+                end
             end
-        end)
-        
-        if not ok then
-            print("  [!] HTTP Error: "..(err or "unknown"))
         end
+    end)
+end
+
+local function reportResult(cid, ok, msg)
+    pcall(function()
+        local json = textutils.serializeJSON({commandId=cid, success=ok, message=msg})
+        local r = http.post(URL .. "/api/command-result", json, {["Content-Type"]="application/json"})
+        if r then r.close() end
+    end)
+end
+
+while true do
+    local id, msg = rednet.receive("COLONY", 0.5)
+    if id and type(msg) == "table" then
+        if msg.type == "command_result" then
+            print("[RESULT] #" .. id .. ": " .. (msg.success and "OK" or "FAIL"))
+            reportResult(msg.commandId, msg.success, msg.message)
+        else
+            local lbl = "?"
+            if msg.data and msg.data.label then lbl = msg.data.label end
+            print(os.date("%H:%M:%S") .. " " .. lbl)
+            pcall(function()
+                local json = textutils.serializeJSON({type=msg.type, turtle=msg.data})
+                local r = http.post(URL .. "/api/update", json, {["Content-Type"]="application/json"})
+                if r then r.close() print("  -> web") end
+            end)
+        end
+    end
+    
+    local now = os.epoch("utc")
+    if now - lastPoll >= 1000 then
+        pollCommands()
+        lastPoll = now
     end
 end
 ]])
 
-print("\n========================================")
-print("  DONE! Files in /colony/")
+print("")
 print("========================================")
-print("\nNext: label set Eve-1")
-print("      refuel all")
-print("      /colony/eve")
+print("  DONE! All files created.")
+print("========================================")
+print("")
+print("Next steps:")
+print("  label set Eve-1")
+print("  refuel all")
+print("  /colony/eve")
