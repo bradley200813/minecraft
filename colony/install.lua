@@ -294,50 +294,43 @@ end
 
 -- Refuel from lava using bucket
 function I.refuelFromLava()
-    -- Find empty bucket
-    local bucketSlot = I.findItem("bucket")
-    if not bucketSlot then
-        return false, "No bucket"
+    -- Find empty bucket (not lava_bucket!)
+    local bucketSlot = nil
+    for i = 1, 16 do
+        local it = turtle.getItemDetail(i)
+        if it and it.name == "minecraft:bucket" then
+            bucketSlot = i
+            break
+        end
     end
     
-    -- Try to pick up lava from in front, above, or below
+    if not bucketSlot then
+        return false, "No empty bucket"
+    end
+    
     turtle.select(bucketSlot)
     local gotLava = false
     
-    -- Check if there's a tank/fluid container peripheral
-    local tank = peripheral.find("tank") or peripheral.find("fluid_tank")
-    if tank and tank.pullFluid then
-        -- Try to pull lava from tank
-        local pulled = tank.pullFluid("lava", 1000)
-        if pulled and pulled > 0 then
-            gotLava = true
-        end
-    end
-    
-    -- If no tank, try to scoop lava directly
-    if not gotLava then
-        if turtle.place() then  -- Try to scoop in front
-            gotLava = true
-        elseif turtle.placeUp() then
-            gotLava = true
-        elseif turtle.placeDown() then
-            gotLava = true
-        end
+    -- Try to scoop lava from in front, above, or below
+    if turtle.place() then
+        gotLava = true
+    elseif turtle.placeUp() then
+        gotLava = true
+    elseif turtle.placeDown() then
+        gotLava = true
     end
     
     if gotLava then
-        -- Now we have a lava bucket, refuel from it
-        local slot = I.findItem("lava_bucket")
-        if slot then
-            turtle.select(slot)
-            turtle.refuel()
+        -- The bucket in our hand should now be a lava bucket
+        -- Refuel directly from selected slot
+        if turtle.refuel() then
             turtle.select(1)
             return true, turtle.getFuelLevel()
         end
     end
     
     turtle.select(1)
-    return false, "No lava found"
+    return false, "No lava source found"
 end
 
 -- Refuel from adjacent container (chest, tank, etc)
@@ -445,19 +438,34 @@ function I.refuelToMaxLava()
     local limit = turtle.getFuelLimit()
     local startFuel = turtle.getFuelLevel()
     local attempts = 0
-    local maxAttempts = 200  -- Safety limit (lava bucket = 1000 fuel, limit = 100000)
+    local maxAttempts = 120  -- About 120k fuel max (120 * 1000)
     
     while turtle.getFuelLevel() < limit and attempts < maxAttempts do
         attempts = attempts + 1
         local ok, result = I.refuelFromLava()
         if not ok then
-            break
+            -- If we have no bucket, we're done
+            if result == "No empty bucket" then
+                break
+            end
+            -- If no lava found, maybe wait for source to refill
+            sleep(0.5)
+            -- Try once more then give up
+            local ok2, _ = I.refuelFromLava()
+            if not ok2 then
+                break
+            end
         end
-        sleep(0.1)  -- Small delay for lava flow
+        -- Small delay for lava source to regenerate if infinite
+        sleep(0.2)
     end
     
     local gained = turtle.getFuelLevel() - startFuel
-    return turtle.getFuelLevel(), "Gained "..gained.." fuel from lava"
+    if gained > 0 then
+        return turtle.getFuelLevel(), "Gained "..gained.." fuel from lava"
+    else
+        return turtle.getFuelLevel(), "Could not get lava (need empty bucket facing lava source)"
+    end
 end
 
 function I.dropTrash()
