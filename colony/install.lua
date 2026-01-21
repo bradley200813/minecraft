@@ -206,6 +206,18 @@ return N
 w("/colony/lib/inv.lua", [[
 local I = {}
 
+-- Trash items to drop
+I.TRASH = {"cobblestone", "dirt", "gravel", "netherrack", "granite", "diorite", "andesite", "tuff", "deepslate"}
+
+-- Fuel values
+I.FUEL_VALUES = {
+    ["minecraft:coal"] = 80,
+    ["minecraft:charcoal"] = 80,
+    ["minecraft:coal_block"] = 800,
+    ["minecraft:lava_bucket"] = 1000,
+    ["minecraft:blaze_rod"] = 120,
+}
+
 function I.freeSlots()
     local c = 0
     for i = 1, 16 do
@@ -220,6 +232,13 @@ function I.isFull()
     return I.freeSlots() == 0
 end
 
+function I.isTrash(name)
+    for _, t in ipairs(I.TRASH) do
+        if name:find(t) then return true end
+    end
+    return false
+end
+
 function I.refuel(min)
     min = min or 1000
     for i = 1, 16 do
@@ -231,18 +250,110 @@ function I.refuel(min)
     return turtle.getFuelLevel()
 end
 
-function I.dropTrash()
-    local trash = {"cobblestone", "dirt", "gravel", "netherrack", "granite", "diorite", "andesite"}
-    for i = 1, 16 do
-        local it = turtle.getItemDetail(i)
-        if it then
-            for _, t in ipairs(trash) do
-                if it.name:find(t) then
-                    turtle.select(i)
-                    turtle.drop()
-                    break
+-- Refuel from lava using bucket
+function I.refuelFromLava()
+    -- Find empty bucket
+    local bucketSlot = I.findItem("bucket")
+    if not bucketSlot then
+        return false, "No bucket"
+    end
+    
+    -- Try to pick up lava from in front, above, or below
+    turtle.select(bucketSlot)
+    local gotLava = false
+    
+    -- Check if there's a tank/fluid container peripheral
+    local tank = peripheral.find("tank") or peripheral.find("fluid_tank")
+    if tank and tank.pullFluid then
+        -- Try to pull lava from tank
+        local pulled = tank.pullFluid("lava", 1000)
+        if pulled and pulled > 0 then
+            gotLava = true
+        end
+    end
+    
+    -- If no tank, try to scoop lava directly
+    if not gotLava then
+        if turtle.place() then  -- Try to scoop in front
+            gotLava = true
+        elseif turtle.placeUp() then
+            gotLava = true
+        elseif turtle.placeDown() then
+            gotLava = true
+        end
+    end
+    
+    if gotLava then
+        -- Now we have a lava bucket, refuel from it
+        local slot = I.findItem("lava_bucket")
+        if slot then
+            turtle.select(slot)
+            turtle.refuel()
+            turtle.select(1)
+            return true, turtle.getFuelLevel()
+        end
+    end
+    
+    turtle.select(1)
+    return false, "No lava found"
+end
+
+-- Refuel from adjacent container (chest, tank, etc)
+function I.refuelFromContainer(side)
+    side = side or "front"
+    local container = peripheral.wrap(side)
+    if not container then return false, "No container" end
+    
+    -- Check if it's a fluid tank
+    if container.tanks then
+        local tanks = container.tanks()
+        for _, tank in pairs(tanks) do
+            if tank.name and tank.name:find("lava") then
+                -- Has lava! Try to extract with bucket
+                return I.refuelFromLava()
+            end
+        end
+    end
+    
+    -- Check if it's an inventory (chest with coal/lava buckets)
+    if container.list then
+        local items = container.list()
+        for slot, item in pairs(items) do
+            if item.name:find("coal") or item.name:find("lava_bucket") or item.name:find("charcoal") then
+                -- Pull fuel item
+                local emptySlot = I.findEmptySlot()
+                if emptySlot then
+                    turtle.select(emptySlot)
+                    if side == "front" then turtle.suck(64)
+                    elseif side == "top" then turtle.suckUp(64)
+                    elseif side == "bottom" then turtle.suckDown(64)
+                    end
+                    turtle.refuel()
+                    turtle.select(1)
+                    return true, turtle.getFuelLevel()
                 end
             end
+        end
+    end
+    
+    return false, "No fuel in container"
+end
+
+function I.findEmptySlot()
+    for i = 1, 16 do
+        if turtle.getItemCount(i) == 0 then
+            return i
+        end
+    end
+    return nil
+end
+
+function I.dropTrash()
+    for i = 1, 16 do
+        local it = turtle.getItemDetail(i)
+        if it and I.isTrash(it.name) then
+            turtle.select(i)
+            turtle.drop()
         end
     end
     turtle.select(1)
@@ -429,6 +540,17 @@ Cmd.register("inspect", function() local ok,d=turtle.inspect() return ok and d.n
 
 -- Inventory
 Cmd.register("refuel", function(a) if Inv then return "Fuel: "..Inv.refuel(a.amount or 1000) else turtle.refuel() return "Fuel: "..turtle.getFuelLevel() end end)
+Cmd.register("refuelLava", function(a)
+    if not Inv then return "No Inv module" end
+    local ok, result = Inv.refuelFromLava()
+    if ok then return "Fuel: "..result else return "Failed: "..result end
+end)
+Cmd.register("refuelContainer", function(a)
+    if not Inv then return "No Inv module" end
+    local side = a.side or "front"
+    local ok, result = Inv.refuelFromContainer(side)
+    if ok then return "Fuel: "..result else return "Failed: "..result end
+end)
 Cmd.register("dropTrash", function() if Inv then Inv.dropTrash() return "Dropped" end return "No Inv" end)
 Cmd.register("dumpToChest", function() if Inv then Inv.dumpToChest() return "Dumped" end for s=1,16 do turtle.select(s) turtle.drop() end return "Dumped" end)
 Cmd.register("dropAll", function() for s=1,16 do turtle.select(s) turtle.drop() end turtle.select(1) return "Dropped" end)
@@ -496,8 +618,45 @@ Cmd.register("branch", function(a) if not Miner then return "No Miner" end State
 -- Crafting & Replication
 Cmd.register("craft", function(a) if not Crafter then return "No Crafter" end local ok,r=Crafter.craft(a.recipe or a.item,a.count or 1) return ok and "Crafted "..r or "Failed: "..tostring(r) end)
 Cmd.register("canCraft", function(a) if not Crafter then return "No Crafter" end local ok,m=Crafter.canCraft(a.recipe) return ok and "Yes" or "Missing: "..textutils.serialize(m) end)
-Cmd.register("replicate", function(a) if not Crafter then return "No Crafter" end local ok,m=Crafter.canBirthTurtle() if not ok then return "Need: "..textutils.serialize(m) end local s,r=Crafter.birthTurtle((State.get("generation") or 0)+1) return s and "Replicated!" or "Failed: "..r end)
-Cmd.register("canReplicate", function() if not Crafter then return "No Crafter" end local ok,m=Crafter.canBirthTurtle() return ok and "Ready!" or "Need: "..textutils.serialize(m) end)
+Cmd.register("replicate", function(a)
+    if not Crafter then return "No Crafter" end
+    -- Check if we have a turtle in inventory already
+    if Crafter.hasTurtle and Crafter.hasTurtle() then
+        local gen = (State.get("generation") or 0) + 1
+        local ok, result = Crafter.birthTurtle(gen)
+        return ok and "Replicated: "..result or "Failed: "..result
+    end
+    -- Check if we can craft one
+    local canMake, missing = Crafter.canBirthTurtle()
+    if not canMake then
+        local list = ""
+        for item, count in pairs(missing) do
+            list = list .. item:match(":(.+)") .. ":" .. count .. " "
+        end
+        return "Need: " .. list
+    end
+    local gen = (State.get("generation") or 0) + 1
+    local ok, result = Crafter.birthTurtle(gen)
+    return ok and "Replicated: "..result or "Failed: "..result
+end)
+Cmd.register("canReplicate", function()
+    if not Crafter then return "No Crafter" end
+    if Crafter.hasTurtle and Crafter.hasTurtle() then
+        return "Have turtle in inventory!"
+    end
+    local ok, missing = Crafter.canBirthTurtle()
+    if ok then return "Ready to craft!" end
+    local list = ""
+    for item, count in pairs(missing) do
+        list = list .. item:match(":(.+)") .. ":" .. count .. " "
+    end
+    return "Need: " .. list
+end)
+Cmd.register("hasTurtle", function()
+    if not Inv then return "No Inv" end
+    local slot = Inv.findItem("turtle")
+    return slot and "Yes, slot "..slot or "No turtle in inventory"
+end)
 
 -- Control
 Cmd.register("stop", function() shouldStop=true if State then State.set("currentState","idle") State.set("shouldStop",true) end return "Stopped" end)
@@ -614,20 +773,98 @@ function C.init(n, i, s, c)
     Comms = c
 end
 
-function C.canCraftTurtle()
-    return Inv.countItem("iron_ingot") >= 7 and Inv.countItem("diamond") >= 1
+-- Materials needed for a mining turtle
+C.TURTLE_RECIPE = {
+    ["minecraft:iron_ingot"] = 7,
+    ["minecraft:chest"] = 1,
+    ["minecraft:cobblestone"] = 7,
+    ["minecraft:redstone"] = 1,
+    ["minecraft:glass_pane"] = 1,
+    ["minecraft:diamond_pickaxe"] = 1,
+}
+
+-- Check if we can craft a turtle
+function C.canBirthTurtle()
+    local missing = {}
+    for item, need in pairs(C.TURTLE_RECIPE) do
+        local have = Inv.countItem(item:match(":(.+)"))
+        if have < need then
+            missing[item] = need - have
+        end
+    end
+    if next(missing) then
+        return false, missing
+    end
+    return true, nil
 end
 
-function C.birthTurtle()
-    local s = Inv.findItem("turtle")
-    if s then
-        turtle.select(s)
-        turtle.place()
-        peripheral.call("front", "turnOn")
-        sleep(2)
-        return true
+-- Check if we already have a turtle in inventory
+function C.hasTurtle()
+    return Inv.findItem("turtle") ~= nil
+end
+
+-- Place and program a new turtle
+function C.birthTurtle(generation)
+    generation = generation or 1
+    
+    -- First check if we have a turtle
+    local slot = Inv.findItem("turtle")
+    if not slot then
+        return false, "No turtle in inventory"
     end
-    return false
+    
+    -- Find disk drive nearby
+    local drive = peripheral.find("drive")
+    
+    -- Place the turtle in front
+    turtle.select(slot)
+    if not turtle.place() then
+        return false, "Cannot place turtle"
+    end
+    
+    -- Get the turtle peripheral
+    local baby = peripheral.wrap("front")
+    if not baby then
+        return false, "Cannot access placed turtle"
+    end
+    
+    -- If we have a disk drive with a disk, copy code
+    if drive and drive.getDiskLabel then
+        print("[BIRTH] Disk drive found, copying code...")
+        -- The disk should have startup that downloads from pastebin
+    end
+    
+    -- Set label
+    local newLabel = "Worker-" .. os.epoch("utc") % 10000
+    baby.setLabel(newLabel)
+    
+    -- Turn it on
+    baby.turnOn()
+    
+    -- Announce birth
+    if Comms then
+        Comms.broadcast("birth", {
+            parent = os.getComputerID(),
+            child = newLabel,
+            generation = generation,
+        })
+    end
+    
+    print("[BIRTH] Created: " .. newLabel .. " (Gen " .. generation .. ")")
+    return true, newLabel
+end
+
+-- Simple craft function (for items we have recipes for)
+function C.craft(recipe, count)
+    -- This requires a crafting turtle
+    if not turtle.craft then
+        return false, "Not a crafting turtle"
+    end
+    return false, "Crafting not implemented"
+end
+
+function C.canCraft(recipe)
+    return false, {["crafting"] = "not implemented"}
 end
 
 return C
