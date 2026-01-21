@@ -1,18 +1,15 @@
 -- ============================================
--- SIMPLE BRIDGE - Minimal HTTP sender
+-- BRIDGE - Send turtle data to web dashboard
 -- ============================================
--- Run this on a CC COMPUTER (not turtle) with:
---   1. Wireless modem attached
---   2. HTTP enabled on server
---
--- This listens for turtle broadcasts and sends to web
+-- Run on a CC COMPUTER (not turtle) with wireless modem
 
--- CHANGE THIS to your PC's IP if not localhost
+-- CHANGE THIS to your PC's IP address
 local SERVER_URL = "http://localhost:3000/api/update"
 
 print("========================================")
-print("  COLONY BRIDGE - SIMPLE")
+print("  COLONY WEB BRIDGE")
 print("========================================")
+print("")
 
 -- Find modem
 local modemSide = nil
@@ -34,75 +31,61 @@ rednet.open(modemSide)
 
 -- Check HTTP
 if not http then
-    print("[ERROR] HTTP not enabled!")
+    print("[ERROR] HTTP not enabled on server!")
     print("")
-    print("Ask server admin to edit:")
-    print("  config/computercraft-server.toml")
+    print("Ask admin to edit config/computercraft-server.toml:")
+    print('  [[http.rules]]')
+    print('  host = "*"')
+    print('  action = "allow"')
     print("")
-    print("Add:")
-    print("  [[http.rules]]")
-    print("  host = \"*\"")
-    print("  action = \"allow\"")
-    return
+    print("Will still show local Rednet messages...")
 end
 
-print("[OK] HTTP available")
-
--- Test connection
-print("")
-print("Testing connection to: " .. SERVER_URL)
-
-local testOk = pcall(function()
-    local resp = http.post(SERVER_URL, 
-        textutils.serializeJSON({type="ping"}),
-        {["Content-Type"] = "application/json"}
-    )
-    if resp then resp.close() end
-end)
-
-if testOk then
-    print("[OK] Server reachable!")
-else
-    print("[WARN] Cannot reach server")
-    print("Make sure Node.js server is running:")
-    print("  node server.js")
-end
-
+print("[INFO] Server URL: " .. SERVER_URL)
 print("")
 print("Listening for turtle broadcasts...")
-print("(Press Ctrl+T to stop)")
+print("(Ctrl+T to stop)")
 print("========================================")
+print("")
 
--- Main loop
 while true do
     local senderId, message = rednet.receive("COLONY", 1)
     
     if senderId and type(message) == "table" then
-        print(string.format("[%s] From #%d: %s", 
+        local msgType = message.type or "unknown"
+        local label = "?"
+        
+        if message.data and message.data.label then
+            label = message.data.label
+        end
+        
+        print(string.format("[%s] #%d %s: %s", 
             os.date("%H:%M:%S"),
             senderId,
-            message.type or "unknown"
+            label,
+            msgType
         ))
         
-        -- Forward to web server
-        local ok = pcall(function()
-            local json = textutils.serializeJSON({
-                type = message.type or "heartbeat",
-                turtle = message.data or message,
-            })
+        if http then
+            local ok = pcall(function()
+                local json = textutils.serializeJSON({
+                    type = msgType,
+                    turtle = message.data or message,
+                })
+                
+                local resp = http.post(SERVER_URL, json, {
+                    ["Content-Type"] = "application/json"
+                })
+                
+                if resp then
+                    resp.close()
+                    print("  -> Sent to web")
+                end
+            end)
             
-            local resp = http.post(SERVER_URL, json, {
-                ["Content-Type"] = "application/json"
-            })
-            
-            if resp then
-                resp.close()
-                print("  -> Sent to web!")
+            if not ok then
+                print("  -> HTTP failed")
             end
-        end)
-        
-        if not ok then
-            print("  -> Failed to send")
         end
     end
 end

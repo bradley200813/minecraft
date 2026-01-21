@@ -1,7 +1,6 @@
 -- ============================================
--- TEST REPORTER - Debug connectivity
+-- TEST - Connectivity Test
 -- ============================================
--- Run this on Eve to test if signals are being sent
 
 print("========================================")
 print("  CONNECTIVITY TEST")
@@ -22,24 +21,18 @@ if modemSide then
     rednet.open(modemSide)
 else
     print("[ERROR] No wireless modem found!")
-    print("  -> Attach a wireless modem to the turtle")
+    print("  -> Right-click a wireless modem onto turtle")
     return
 end
 
--- Check fuel
+print("[INFO] Label: " .. (os.getComputerLabel() or "NOT SET"))
+print("[INFO] ID: " .. os.getComputerID())
 print("[INFO] Fuel: " .. turtle.getFuelLevel())
 
--- Check label
-local label = os.getComputerLabel() or "NOT SET"
-print("[INFO] Label: " .. label)
-print("[INFO] ID: " .. os.getComputerID())
-
 print("")
-print("Sending test broadcasts...")
-print("(Look for these on your bridge computer)")
+print("Sending 5 test broadcasts on COLONY protocol...")
 print("")
 
--- Send test messages
 for i = 1, 5 do
     local msg = {
         type = "heartbeat",
@@ -61,6 +54,5 @@ for i = 1, 5 do
 end
 
 print("")
-print("========================================")
-print("Done! Check if bridge received messages.")
+print("Done! Check your bridge computer.")
 print("========================================")
