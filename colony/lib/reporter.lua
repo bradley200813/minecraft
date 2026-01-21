@@ -23,8 +23,8 @@ function Reporter.buildReport()
     local report = {
         id = os.getComputerID(),
         label = os.getComputerLabel() or ("Turtle-" .. os.getComputerID()),
-        role = State and State.getValue("role") or "unknown",
-        generation = State and State.getValue("generation") or 0,
+        role = State and State.get("role") or "unknown",
+        generation = State and State.get("generation") or 0,
         
         position = Nav and Nav.getPosition() or {x=0, y=0, z=0},
         facing = Nav and Nav.getFacing() or 0,
@@ -32,12 +32,7 @@ function Reporter.buildReport()
         fuel = turtle.getFuelLevel(),
         fuelLimit = turtle.getFuelLimit(),
         
-        state = State and State.getValue("currentTask.state") or "idle",
-        task = State and State.getValue("currentTask") or nil,
-        
-        inventory = Inv and Inv.summary() or {},
-        
-        stats = State and State.getValue("stats") or {},
+        state = State and State.get("currentState") or "idle",
         
         timestamp = os.epoch("utc"),
     }
