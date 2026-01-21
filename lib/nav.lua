@@ -32,6 +32,12 @@ local home = { x = 0, y = 0, z = 0 }
 local moveHistory = {}
 local MAX_HISTORY = 1000
 
+-- Initialize navigation (tries GPS, falls back to relative)
+function Nav.init()
+    Nav.locateGPS(2)
+    return true
+end
+
 -- Try to get GPS coordinates
 function Nav.locateGPS(timeout)
     timeout = timeout or 2
