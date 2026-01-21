@@ -322,9 +322,19 @@ function handleTurtleUpdate(data) {
         if (isNew) {
             addEvent('birth', `${turtle.label || id} joined the colony`);
             colonyData.stats.totalTurtlesBorn++;
+            // Broadcast birth celebration
+            broadcast({ type: 'birth', turtle: colonyData.turtles[id] });
         }
         
-        broadcast({ type: 'turtle', data: colonyData.turtles[id] });
+        broadcast({ type: 'heartbeat', turtle: colonyData.turtles[id] });
+        
+    } else if (data.type === 'birth') {
+        // Handle birth announcement from parent turtle
+        const birth = data.data || data.turtle || data;
+        console.log('[BIRTH] New turtle born!', birth);
+        addEvent('birth', `🐣 ${birth.child || 'New turtle'} born! Parent: ${birth.parent}, Gen ${birth.generation}`);
+        colonyData.stats.totalTurtlesBorn++;
+        broadcast({ type: 'birth', turtle: birth });
         
     } else if (data.type === 'event') {
         addEvent(data.eventType || 'info', data.message, data.data);

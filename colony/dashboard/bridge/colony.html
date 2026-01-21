@@ -1,0 +1,1754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐢 Genesis Colony - Command Center</title>
+    <!-- Monaco Editor -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0e14;
+            --bg-secondary: #131920;
+            --bg-tertiary: #1a2028;
+            --bg-card: #1e252e;
+            --accent: #00ff87;
+            --accent-dim: #00aa5a;
+            --accent-glow: rgba(0, 255, 135, 0.3);
+            --secondary: #60efff;
+            --text: #e6edf3;
+            --text-dim: #7d8590;
+            --danger: #f85149;
+            --warning: #d29922;
+            --success: #3fb950;
+            --border: #30363d;
+            --generation-0: #00ff87;
+            --generation-1: #60efff;
+            --generation-2: #a78bfa;
+            --generation-3: #f472b6;
+            --generation-4: #fbbf24;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            background: var(--bg-primary);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* Main Layout */
+        .app {
+            display: grid;
+            grid-template-columns: 320px 1fr 400px;
+            grid-template-rows: auto 1fr;
+            height: 100vh;
+            gap: 1px;
+            background: var(--border);
+        }
+
+        /* Header */
+        .header {
+            grid-column: 1 / -1;
+            background: var(--bg-secondary);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo h1 {
+            font-size: 1.4em;
+            background: linear-gradient(135deg, var(--accent), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            background: var(--bg-tertiary);
+            border-radius: 20px;
+            font-size: 0.8em;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--danger);
+            box-shadow: 0 0 10px var(--danger);
+        }
+
+        .status-dot.connected {
+            background: var(--success);
+            box-shadow: 0 0 10px var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(0.9); }
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 20px;
+        }
+
+        .header-stat {
+            text-align: center;
+        }
+
+        .header-stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        .header-stat-label {
+            font-size: 0.7em;
+            color: var(--text-dim);
+            text-transform: uppercase;
+        }
+
+        /* Left Panel - Turtle Fleet */
+        .fleet-panel {
+            background: var(--bg-secondary);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 15px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-title {
+            font-size: 0.9em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+        }
+
+        /* Family Tree View */
+        .family-tree {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .turtle-node {
+            margin-bottom: 8px;
+        }
+
+        .turtle-card {
+            background: var(--bg-card);
+            border-radius: 10px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 4px solid var(--generation-0);
+            position: relative;
+        }
+
+        .turtle-card.gen-1 { border-left-color: var(--generation-1); }
+        .turtle-card.gen-2 { border-left-color: var(--generation-2); }
+        .turtle-card.gen-3 { border-left-color: var(--generation-3); }
+        .turtle-card.gen-4 { border-left-color: var(--generation-4); }
+
+        .turtle-card:hover {
+            background: var(--bg-tertiary);
+            transform: translateX(4px);
+        }
+
+        .turtle-card.selected {
+            box-shadow: 0 0 0 2px var(--accent), 0 0 20px var(--accent-glow);
+        }
+
+        .turtle-card.offline {
+            opacity: 0.5;
+        }
+
+        .turtle-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .turtle-name {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .turtle-id {
+            font-size: 0.75em;
+            color: var(--text-dim);
+            background: var(--bg-primary);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .turtle-gen-badge {
+            font-size: 0.7em;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: var(--generation-0);
+            color: var(--bg-primary);
+            font-weight: bold;
+        }
+
+        .turtle-gen-badge.gen-1 { background: var(--generation-1); }
+        .turtle-gen-badge.gen-2 { background: var(--generation-2); }
+        .turtle-gen-badge.gen-3 { background: var(--generation-3); }
+        .turtle-gen-badge.gen-4 { background: var(--generation-4); }
+
+        .turtle-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            font-size: 0.8em;
+        }
+
+        .turtle-stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-dim);
+        }
+
+        .turtle-stat-icon { font-size: 0.9em; }
+
+        .fuel-bar {
+            width: 60px;
+            height: 6px;
+            background: var(--bg-primary);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .fuel-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--danger), var(--warning), var(--success));
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+
+        .turtle-children {
+            margin-left: 20px;
+            padding-left: 15px;
+            border-left: 2px dashed var(--border);
+        }
+
+        .turtle-state {
+            font-size: 0.7em;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: var(--bg-primary);
+        }
+
+        .turtle-state.mining { background: var(--warning); color: #000; }
+        .turtle-state.quarrying { background: var(--secondary); color: #000; }
+        .turtle-state.returning { background: var(--accent); color: #000; }
+
+        /* Center Panel - Main View */
+        .main-panel {
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab {
+            padding: 12px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            font-size: 0.85em;
+        }
+
+        .tab:hover { background: var(--bg-tertiary); }
+        .tab.active {
+            border-bottom-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .tab-content {
+            flex: 1;
+            display: none;
+            overflow: hidden;
+        }
+
+        .tab-content.active { display: flex; flex-direction: column; }
+
+        /* Map View */
+        .map-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: var(--bg-tertiary);
+        }
+
+        .map-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .map-controls {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .map-btn {
+            width: 36px;
+            height: 36px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+        }
+
+        .map-btn:hover { background: var(--bg-tertiary); }
+
+        .map-legend {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 0.75em;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        /* Code Editor */
+        .editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-toolbar {
+            display: flex;
+            gap: 8px;
+            padding: 10px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .editor-btn {
+            padding: 6px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 0.8em;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .editor-btn:hover { background: var(--bg-card); }
+        .editor-btn.primary { background: var(--accent); color: #000; border: none; }
+        .editor-btn.primary:hover { background: var(--accent-dim); }
+
+        #monaco-editor {
+            flex: 1;
+        }
+
+        .script-select {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            padding: 6px 10px;
+            font-size: 0.8em;
+        }
+
+        /* Control Panel */
+        .control-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .control-section {
+            margin-bottom: 15px;
+        }
+
+        .control-section-title {
+            font-size: 0.75em;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .control-grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .ctrl-btn {
+            padding: 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .ctrl-btn:hover {
+            background: var(--bg-tertiary);
+            transform: translateY(-2px);
+        }
+
+        .ctrl-btn.danger { border-color: var(--danger); }
+        .ctrl-btn.danger:hover { background: var(--danger); color: #fff; }
+        .ctrl-btn.warning { border-color: var(--warning); }
+        .ctrl-btn.action { border-color: var(--accent); }
+        .ctrl-btn.action:hover { background: var(--accent); color: #000; }
+
+        .ctrl-btn-icon { font-size: 1.3em; }
+
+        /* Right Panel - Console & History */
+        .console-panel {
+            background: var(--bg-secondary);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .console-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .console-tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 0.8em;
+            border-bottom: 2px solid transparent;
+        }
+
+        .console-tab:hover { background: var(--bg-tertiary); }
+        .console-tab.active {
+            border-bottom-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .console-content {
+            flex: 1;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .console-content.active { display: flex; }
+
+        /* Live Console */
+        .console-output {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            font-size: 0.8em;
+            background: var(--bg-primary);
+        }
+
+        .console-line {
+            margin-bottom: 4px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .console-line.cmd { background: var(--bg-tertiary); }
+        .console-line.result { color: var(--accent); }
+        .console-line.error { color: var(--danger); }
+        .console-line.info { color: var(--secondary); }
+
+        .console-time {
+            color: var(--text-dim);
+            font-size: 0.85em;
+        }
+
+        .console-from {
+            color: var(--warning);
+            font-weight: bold;
+        }
+
+        /* Command History */
+        .history-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .history-item:hover { background: var(--bg-tertiary); }
+
+        .history-item-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .history-cmd {
+            font-weight: 600;
+            color: var(--secondary);
+        }
+
+        .history-time {
+            font-size: 0.75em;
+            color: var(--text-dim);
+        }
+
+        .history-result {
+            font-size: 0.8em;
+            color: var(--text-dim);
+        }
+
+        .history-result.success { color: var(--success); }
+        .history-result.fail { color: var(--danger); }
+
+        /* Saved Scripts */
+        .scripts-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .script-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .script-item:hover { background: var(--bg-tertiary); }
+
+        .script-name {
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .script-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .script-btn {
+            padding: 4px 8px;
+            background: var(--bg-card);
+            border: none;
+            border-radius: 4px;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 0.75em;
+        }
+
+        .script-btn:hover { background: var(--bg-tertiary); }
+        .script-btn.run { color: var(--accent); }
+        .script-btn.delete { color: var(--danger); }
+
+        /* Macro Builder */
+        .macro-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+        }
+
+        .macro-queue {
+            flex: 1;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            padding: 10px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+        }
+
+        .macro-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            background: var(--bg-card);
+            border-radius: 6px;
+            margin-bottom: 6px;
+            cursor: grab;
+        }
+
+        .macro-item:active { cursor: grabbing; }
+
+        .macro-num {
+            width: 24px;
+            height: 24px;
+            background: var(--accent);
+            color: #000;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75em;
+            font-weight: bold;
+        }
+
+        .macro-cmd { flex: 1; }
+
+        .macro-remove {
+            color: var(--danger);
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        .macro-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* Quick Command Input */
+        .quick-cmd {
+            display: flex;
+            gap: 8px;
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border-top: 1px solid var(--border);
+        }
+
+        .quick-cmd input {
+            flex: 1;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: var(--text);
+            font-family: inherit;
+        }
+
+        .quick-cmd input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        /* Notifications */
+        .notifications {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .notification {
+            padding: 12px 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            animation: slideIn 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 250px;
+        }
+
+        .notification.success { border-left: 4px solid var(--success); }
+        .notification.error { border-left: 4px solid var(--danger); }
+        .notification.info { border-left: 4px solid var(--secondary); }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Birth Celebration Animation */
+        .birth-celebration {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--bg-card);
+            border: 2px solid var(--accent);
+            border-radius: 16px;
+            padding: 30px 50px;
+            text-align: center;
+            z-index: 1001;
+            animation: celebrate 0.5s ease;
+            box-shadow: 0 0 50px var(--accent-glow);
+        }
+
+        @keyframes celebrate {
+            0% { transform: translate(-50%, -50%) scale(0); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+
+        .birth-title {
+            font-size: 1.5em;
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+
+        .birth-info {
+            color: var(--text-dim);
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .app {
+                grid-template-columns: 280px 1fr;
+            }
+            .console-panel { display: none; }
+        }
+
+        @media (max-width: 800px) {
+            .app {
+                grid-template-columns: 1fr;
+            }
+            .fleet-panel { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <span style="font-size: 1.8em;">🐢</span>
+                <h1>Genesis Colony</h1>
+                <div class="connection-status">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="connectionText">Disconnected</span>
+                </div>
+            </div>
+            <div class="header-stats">
+                <div class="header-stat">
+                    <div class="header-stat-value" id="totalTurtles">0</div>
+                    <div class="header-stat-label">Turtles</div>
+                </div>
+                <div class="header-stat">
+                    <div class="header-stat-value" id="totalGenerations">0</div>
+                    <div class="header-stat-label">Generations</div>
+                </div>
+                <div class="header-stat">
+                    <div class="header-stat-value" id="activeTasks">0</div>
+                    <div class="header-stat-label">Active</div>
+                </div>
+                <div class="header-stat">
+                    <div class="header-stat-value" id="totalFuel">0</div>
+                    <div class="header-stat-label">Total Fuel</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Left Panel - Fleet -->
+        <div class="fleet-panel">
+            <div class="panel-header">
+                <span class="panel-title">🌳 Family Tree</span>
+                <button class="editor-btn" onclick="refreshFleet()">↻</button>
+            </div>
+            <div class="family-tree" id="familyTree">
+                <div style="padding: 20px; text-align: center; color: var(--text-dim);">
+                    Waiting for turtles...
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Panel -->
+        <div class="main-panel">
+            <div class="tabs">
+                <div class="tab active" data-tab="map">🗺️ Map</div>
+                <div class="tab" data-tab="control">🎮 Control</div>
+                <div class="tab" data-tab="code">💻 Code Editor</div>
+                <div class="tab" data-tab="macros">⚡ Macros</div>
+            </div>
+
+            <!-- Map Tab -->
+            <div class="tab-content active" id="tab-map">
+                <div class="map-container">
+                    <canvas id="mapCanvas" class="map-canvas"></canvas>
+                    <div class="map-legend">
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: var(--generation-0);"></div>
+                            <span>Eve (Gen 0)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: var(--generation-1);"></div>
+                            <span>Gen 1</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: var(--generation-2);"></div>
+                            <span>Gen 2</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: var(--warning);"></div>
+                            <span>Fuel Station</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: var(--secondary);"></div>
+                            <span>Storage</span>
+                        </div>
+                    </div>
+                    <div class="map-controls">
+                        <button class="map-btn" onclick="mapZoom(1.2)">+</button>
+                        <button class="map-btn" onclick="mapZoom(0.8)">−</button>
+                        <button class="map-btn" onclick="mapCenter()">⌖</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Control Tab -->
+            <div class="tab-content" id="tab-control">
+                <div class="control-container">
+                    <div id="selectedTurtleInfo" style="margin-bottom: 15px; padding: 10px; background: var(--bg-card); border-radius: 8px; display: none;">
+                        <strong>Selected:</strong> <span id="selectedName">None</span>
+                    </div>
+
+                    <!-- Movement -->
+                    <div class="control-section">
+                        <div class="control-section-title">Movement</div>
+                        <div class="control-grid">
+                            <div></div>
+                            <button class="ctrl-btn" onclick="sendCommand('forward')"><span class="ctrl-btn-icon">⬆️</span>Forward</button>
+                            <div></div>
+                            <button class="ctrl-btn" onclick="sendCommand('turnLeft')"><span class="ctrl-btn-icon">↩️</span>Left</button>
+                            <button class="ctrl-btn" onclick="sendCommand('up')"><span class="ctrl-btn-icon">⏫</span>Up</button>
+                            <button class="ctrl-btn" onclick="sendCommand('turnRight')"><span class="ctrl-btn-icon">↪️</span>Right</button>
+                            <div></div>
+                            <button class="ctrl-btn" onclick="sendCommand('back')"><span class="ctrl-btn-icon">⬇️</span>Back</button>
+                            <button class="ctrl-btn" onclick="sendCommand('down')"><span class="ctrl-btn-icon">⏬</span>Down</button>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="control-section">
+                        <div class="control-section-title">Actions</div>
+                        <div class="control-grid">
+                            <button class="ctrl-btn" onclick="sendCommand('dig')"><span class="ctrl-btn-icon">⛏️</span>Dig</button>
+                            <button class="ctrl-btn" onclick="sendCommand('digUp')"><span class="ctrl-btn-icon">⬆️⛏️</span>Dig Up</button>
+                            <button class="ctrl-btn" onclick="sendCommand('digDown')"><span class="ctrl-btn-icon">⬇️⛏️</span>Dig Down</button>
+                            <button class="ctrl-btn" onclick="sendCommand('place')"><span class="ctrl-btn-icon">🧱</span>Place</button>
+                            <button class="ctrl-btn" onclick="sendCommand('suck')"><span class="ctrl-btn-icon">🫳</span>Suck</button>
+                            <button class="ctrl-btn" onclick="sendCommand('attack')"><span class="ctrl-btn-icon">⚔️</span>Attack</button>
+                        </div>
+                    </div>
+
+                    <!-- Tasks -->
+                    <div class="control-section">
+                        <div class="control-section-title">Mining Tasks</div>
+                        <div class="control-grid-2">
+                            <button class="ctrl-btn action" onclick="promptQuarry()"><span class="ctrl-btn-icon">🕳️</span>Quarry</button>
+                            <button class="ctrl-btn action" onclick="promptTunnel()"><span class="ctrl-btn-icon">🚇</span>Tunnel</button>
+                            <button class="ctrl-btn" onclick="sendCommand('mine')"><span class="ctrl-btn-icon">⛏️</span>Branch Mine</button>
+                            <button class="ctrl-btn" onclick="sendCommand('auto')"><span class="ctrl-btn-icon">🤖</span>Auto Mode</button>
+                        </div>
+                    </div>
+
+                    <!-- Replication -->
+                    <div class="control-section">
+                        <div class="control-section-title">🥚 Replication</div>
+                        <div class="control-grid-2">
+                            <button class="ctrl-btn action" onclick="sendCommand('replicate')"><span class="ctrl-btn-icon">🐣</span>Replicate!</button>
+                            <button class="ctrl-btn" onclick="sendCommand('canReplicate')"><span class="ctrl-btn-icon">❓</span>Can Replicate?</button>
+                            <button class="ctrl-btn" onclick="sendCommand('hasTurtle')"><span class="ctrl-btn-icon">🐢</span>Has Turtle?</button>
+                            <button class="ctrl-btn" onclick="sendCommand('canCraft')"><span class="ctrl-btn-icon">🔧</span>Can Craft?</button>
+                        </div>
+                    </div>
+
+                    <!-- Fuel & Storage -->
+                    <div class="control-section">
+                        <div class="control-section-title">Stations</div>
+                        <div class="control-grid-2">
+                            <button class="ctrl-btn" onclick="promptSetStation('fuel')"><span class="ctrl-btn-icon">⛽</span>Set Fuel Station</button>
+                            <button class="ctrl-btn action" onclick="sendCommand('goRefuel')"><span class="ctrl-btn-icon">🚀</span>Auto Refuel</button>
+                            <button class="ctrl-btn" onclick="promptSetStation('storage')"><span class="ctrl-btn-icon">📦</span>Set Storage</button>
+                            <button class="ctrl-btn action" onclick="sendCommand('goDeposit')"><span class="ctrl-btn-icon">🏪</span>Auto Deposit</button>
+                        </div>
+                    </div>
+
+                    <!-- Control -->
+                    <div class="control-section">
+                        <div class="control-section-title">Control</div>
+                        <div class="control-grid">
+                            <button class="ctrl-btn danger" onclick="sendCommand('stop')"><span class="ctrl-btn-icon">🛑</span>STOP</button>
+                            <button class="ctrl-btn warning" onclick="sendCommand('pause')"><span class="ctrl-btn-icon">⏸️</span>Pause</button>
+                            <button class="ctrl-btn" onclick="sendCommand('resume')"><span class="ctrl-btn-icon">▶️</span>Resume</button>
+                            <button class="ctrl-btn" onclick="sendCommand('goHome')"><span class="ctrl-btn-icon">🏠</span>Home</button>
+                            <button class="ctrl-btn" onclick="sendCommand('setHome')"><span class="ctrl-btn-icon">📍</span>Set Home</button>
+                            <button class="ctrl-btn" onclick="sendCommand('status')"><span class="ctrl-btn-icon">ℹ️</span>Status</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Code Editor Tab -->
+            <div class="tab-content" id="tab-code">
+                <div class="editor-container">
+                    <div class="editor-toolbar">
+                        <select class="script-select" id="templateSelect" onchange="loadTemplate()">
+                            <option value="">-- Load Template --</option>
+                            <option value="spiral">Spiral Staircase</option>
+                            <option value="room">Dig Room</option>
+                            <option value="tower">Build Tower</option>
+                            <option value="farm">Farm Pattern</option>
+                            <option value="wall">Build Wall</option>
+                        </select>
+                        <button class="editor-btn primary" onclick="runCode()">▶ Run</button>
+                        <button class="editor-btn" onclick="saveScript()">💾 Save</button>
+                        <input type="text" id="scriptName" placeholder="Script name..." style="padding: 6px 10px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+                        <button class="editor-btn" onclick="clearEditor()">🗑️ Clear</button>
+                    </div>
+                    <div id="monaco-editor"></div>
+                </div>
+            </div>
+
+            <!-- Macros Tab -->
+            <div class="tab-content" id="tab-macros">
+                <div class="macro-container">
+                    <div style="margin-bottom: 10px;">
+                        <strong>Command Queue</strong>
+                        <span style="color: var(--text-dim); font-size: 0.8em;"> - Drag to reorder</span>
+                    </div>
+                    <div class="macro-queue" id="macroQueue">
+                        <div style="text-align: center; color: var(--text-dim); padding: 20px;">
+                            Add commands from the buttons below
+                        </div>
+                    </div>
+                    <div class="control-grid" style="margin-bottom: 10px;">
+                        <button class="ctrl-btn" onclick="addMacro('forward')">⬆️ Forward</button>
+                        <button class="ctrl-btn" onclick="addMacro('back')">⬇️ Back</button>
+                        <button class="ctrl-btn" onclick="addMacro('turnLeft')">↩️ Left</button>
+                        <button class="ctrl-btn" onclick="addMacro('turnRight')">↪️ Right</button>
+                        <button class="ctrl-btn" onclick="addMacro('dig')">⛏️ Dig</button>
+                        <button class="ctrl-btn" onclick="addMacro('place')">🧱 Place</button>
+                        <button class="ctrl-btn" onclick="addMacro('up')">⏫ Up</button>
+                        <button class="ctrl-btn" onclick="addMacro('down')">⏬ Down</button>
+                        <button class="ctrl-btn" onclick="addMacroRepeat()">🔁 Repeat</button>
+                    </div>
+                    <div class="macro-controls">
+                        <button class="editor-btn primary" onclick="runMacro()" style="flex: 1;">▶ Run Macro</button>
+                        <button class="editor-btn" onclick="saveMacro()">💾 Save</button>
+                        <button class="editor-btn" onclick="clearMacro()">🗑️ Clear</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel - Console -->
+        <div class="console-panel">
+            <div class="console-tabs">
+                <div class="console-tab active" data-console="live">📟 Live Console</div>
+                <div class="console-tab" data-console="history">📜 History</div>
+                <div class="console-tab" data-console="scripts">📁 Scripts</div>
+            </div>
+
+            <!-- Live Console -->
+            <div class="console-content active" id="console-live">
+                <div class="console-output" id="consoleOutput"></div>
+                <div class="quick-cmd">
+                    <input type="text" id="quickCommand" placeholder="Enter command..." onkeypress="if(event.key==='Enter')runQuickCommand()">
+                    <button class="editor-btn primary" onclick="runQuickCommand()">Send</button>
+                </div>
+            </div>
+
+            <!-- History -->
+            <div class="console-content" id="console-history">
+                <div class="history-list" id="historyList"></div>
+            </div>
+
+            <!-- Saved Scripts -->
+            <div class="console-content" id="console-scripts">
+                <div class="scripts-list" id="scriptsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="notifications" id="notifications"></div>
+
+    <script>
+        // State
+        let ws = null;
+        let turtles = {};
+        let selectedTurtle = null;
+        let commandHistory = JSON.parse(localStorage.getItem('commandHistory') || '[]');
+        let savedScripts = JSON.parse(localStorage.getItem('savedScripts') || '{}');
+        let savedMacros = JSON.parse(localStorage.getItem('savedMacros') || '{}');
+        let macroQueue = [];
+        let editor = null;
+        let mapScale = 10;
+        let mapOffset = { x: 0, y: 0 };
+
+        // Templates
+        const codeTemplates = {
+            spiral: `-- Spiral Staircase Down
+local depth = 20
+for i = 1, depth do
+    turtle.dig()
+    turtle.forward()
+    turtle.turnRight()
+    turtle.digDown()
+    turtle.down()
+end
+return "Spiral done: " .. depth`,
+            room: `-- Dig a Room (width x length x height)
+local w, l, h = 5, 5, 3
+for y = 1, h do
+    for x = 1, w do
+        for z = 1, l - 1 do
+            turtle.dig()
+            turtle.forward()
+        end
+        if x < w then
+            if x % 2 == 1 then
+                turtle.turnRight()
+                turtle.dig()
+                turtle.forward()
+                turtle.turnRight()
+            else
+                turtle.turnLeft()
+                turtle.dig()
+                turtle.forward()
+                turtle.turnLeft()
+            end
+        end
+    end
+    if y < h then
+        turtle.digUp()
+        turtle.up()
+        turtle.turnRight()
+        turtle.turnRight()
+    end
+end
+return "Room done"`,
+            tower: `-- Build a Tower
+local height = 10
+for i = 1, height do
+    turtle.placeDown()
+    turtle.up()
+end
+return "Tower: " .. height`,
+            farm: `-- Create Farm Pattern
+local rows = 8
+for r = 1, rows do
+    for c = 1, 8 do
+        turtle.digDown()
+        turtle.forward()
+    end
+    if r < rows then
+        if r % 2 == 1 then
+            turtle.turnRight()
+            turtle.forward()
+            turtle.turnRight()
+        else
+            turtle.turnLeft()
+            turtle.forward()
+            turtle.turnLeft()
+        end
+    end
+end
+return "Farm pattern done"`,
+            wall: `-- Build Wall
+local length = 10
+local height = 4
+for h = 1, height do
+    for l = 1, length do
+        turtle.place()
+        if l < length then
+            turtle.forward()
+        end
+    end
+    if h < height then
+        turtle.up()
+        turtle.turnRight()
+        turtle.turnRight()
+    end
+end
+return "Wall done"`
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initWebSocket();
+            initTabs();
+            initMonaco();
+            initMap();
+            renderHistory();
+            renderScripts();
+        });
+
+        // WebSocket
+        function initWebSocket() {
+            ws = new WebSocket('ws://localhost:3001');
+            
+            ws.onopen = () => {
+                document.getElementById('statusDot').classList.add('connected');
+                document.getElementById('connectionText').textContent = 'Connected';
+                logConsole('Connected to server', 'info');
+            };
+
+            ws.onclose = () => {
+                document.getElementById('statusDot').classList.remove('connected');
+                document.getElementById('connectionText').textContent = 'Disconnected';
+                logConsole('Disconnected', 'error');
+                setTimeout(initWebSocket, 3000);
+            };
+
+            ws.onmessage = (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    handleMessage(data);
+                } catch (err) {
+                    console.error('Parse error:', err);
+                }
+            };
+        }
+
+        function handleMessage(data) {
+            if (data.type === 'heartbeat' && data.turtle) {
+                const t = data.turtle;
+                const isNew = !turtles[t.id];
+                turtles[t.id] = { ...turtles[t.id], ...t, lastSeen: Date.now() };
+                
+                if (isNew) {
+                    logConsole(`New turtle: ${t.label} (Gen ${t.generation || 0})`, 'info');
+                }
+                
+                updateStats();
+                renderFamilyTree();
+                drawMap();
+            } else if (data.type === 'birth') {
+                celebrateBirth(data);
+            } else if (data.type === 'command_result') {
+                const success = data.success;
+                const msg = data.message || 'OK';
+                logConsole(`Result: ${msg}`, success ? 'result' : 'error');
+                
+                // Add to history
+                if (commandHistory.length > 0) {
+                    commandHistory[0].result = msg;
+                    commandHistory[0].success = success;
+                    saveHistory();
+                    renderHistory();
+                }
+            }
+        }
+
+        // Tabs
+        function initTabs() {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+                    if (tab.dataset.tab === 'code' && editor) editor.layout();
+                    if (tab.dataset.tab === 'map') drawMap();
+                });
+            });
+
+            document.querySelectorAll('.console-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.console-tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.console-content').forEach(c => c.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.getElementById('console-' + tab.dataset.console).classList.add('active');
+                });
+            });
+        }
+
+        // Monaco Editor
+        function initMonaco() {
+            require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
+            require(['vs/editor/editor.main'], function () {
+                monaco.editor.defineTheme('colony-dark', {
+                    base: 'vs-dark',
+                    inherit: true,
+                    rules: [],
+                    colors: {
+                        'editor.background': '#0a0e14',
+                        'editor.foreground': '#e6edf3',
+                    }
+                });
+
+                editor = monaco.editor.create(document.getElementById('monaco-editor'), {
+                    value: '-- Write Lua code here\n-- Available: turtle, Nav, Inv, State, sleep, print\n\nfor i = 1, 4 do\n    turtle.forward()\n    turtle.turnRight()\nend\n\nreturn "Done!"',
+                    language: 'lua',
+                    theme: 'colony-dark',
+                    minimap: { enabled: false },
+                    fontSize: 14,
+                    lineNumbers: 'on',
+                    automaticLayout: true,
+                });
+            });
+        }
+
+        // Map
+        function initMap() {
+            const canvas = document.getElementById('mapCanvas');
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            window.addEventListener('resize', () => {
+                canvas.width = container.clientWidth;
+                canvas.height = container.clientHeight;
+                drawMap();
+            });
+
+            // Pan with mouse
+            let dragging = false, lastX, lastY;
+            canvas.addEventListener('mousedown', e => { dragging = true; lastX = e.clientX; lastY = e.clientY; });
+            canvas.addEventListener('mouseup', () => dragging = false);
+            canvas.addEventListener('mouseleave', () => dragging = false);
+            canvas.addEventListener('mousemove', e => {
+                if (dragging) {
+                    mapOffset.x += e.clientX - lastX;
+                    mapOffset.y += e.clientY - lastY;
+                    lastX = e.clientX;
+                    lastY = e.clientY;
+                    drawMap();
+                }
+            });
+
+            canvas.addEventListener('wheel', e => {
+                e.preventDefault();
+                mapZoom(e.deltaY < 0 ? 1.1 : 0.9);
+            });
+        }
+
+        function drawMap() {
+            const canvas = document.getElementById('mapCanvas');
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width, h = canvas.height;
+            const cx = w / 2 + mapOffset.x, cy = h / 2 + mapOffset.y;
+
+            ctx.fillStyle = '#1a2028';
+            ctx.fillRect(0, 0, w, h);
+
+            // Grid
+            ctx.strokeStyle = '#30363d';
+            ctx.lineWidth = 0.5;
+            const gridSize = mapScale * 5;
+            for (let x = cx % gridSize; x < w; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, h);
+                ctx.stroke();
+            }
+            for (let y = cy % gridSize; y < h; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(w, y);
+                ctx.stroke();
+            }
+
+            // Origin marker
+            ctx.fillStyle = '#7d8590';
+            ctx.beginPath();
+            ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.font = '10px monospace';
+            ctx.fillText('0,0', cx + 6, cy - 6);
+
+            // Turtles
+            const genColors = ['#00ff87', '#60efff', '#a78bfa', '#f472b6', '#fbbf24'];
+            Object.values(turtles).forEach(t => {
+                if (!t.position) return;
+                const x = cx + t.position.x * mapScale;
+                const y = cy - t.position.z * mapScale; // Minecraft Z is inverted
+                const gen = t.generation || 0;
+                const color = genColors[Math.min(gen, 4)];
+                const isOffline = Date.now() - t.lastSeen > 15000;
+
+                // Glow
+                if (!isOffline) {
+                    ctx.beginPath();
+                    ctx.arc(x, y, 12, 0, Math.PI * 2);
+                    ctx.fillStyle = color + '33';
+                    ctx.fill();
+                }
+
+                // Turtle
+                ctx.beginPath();
+                ctx.arc(x, y, 8, 0, Math.PI * 2);
+                ctx.fillStyle = isOffline ? '#555' : color;
+                ctx.fill();
+
+                // Label
+                ctx.fillStyle = '#e6edf3';
+                ctx.font = '10px monospace';
+                ctx.fillText(t.label || `T-${t.id}`, x + 12, y + 4);
+
+                // Selection
+                if (selectedTurtle === t.id) {
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 12, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            });
+        }
+
+        function mapZoom(factor) {
+            mapScale = Math.max(2, Math.min(50, mapScale * factor));
+            drawMap();
+        }
+
+        function mapCenter() {
+            mapOffset = { x: 0, y: 0 };
+            drawMap();
+        }
+
+        // Family Tree
+        function renderFamilyTree() {
+            const container = document.getElementById('familyTree');
+            const turtleList = Object.values(turtles).sort((a, b) => (a.generation || 0) - (b.generation || 0));
+            
+            if (turtleList.length === 0) {
+                container.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-dim);">Waiting for turtles...</div>';
+                return;
+            }
+
+            let html = '';
+            const byGen = {};
+            turtleList.forEach(t => {
+                const gen = t.generation || 0;
+                if (!byGen[gen]) byGen[gen] = [];
+                byGen[gen].push(t);
+            });
+
+            Object.keys(byGen).sort((a, b) => a - b).forEach(gen => {
+                html += `<div style="margin-bottom: 8px;">`;
+                byGen[gen].forEach(t => {
+                    const isOffline = Date.now() - t.lastSeen > 15000;
+                    const fuelPercent = t.fuelLimit ? Math.round(t.fuel / t.fuelLimit * 100) : 50;
+                    const stateClass = t.state && t.state !== 'idle' ? t.state : '';
+                    
+                    html += `
+                        <div class="turtle-card gen-${gen} ${isOffline ? 'offline' : ''} ${selectedTurtle === t.id ? 'selected' : ''}" 
+                             onclick="selectTurtle(${t.id})" data-id="${t.id}">
+                            <div class="turtle-card-header">
+                                <span class="turtle-name">
+                                    🐢 ${t.label || 'T-' + t.id}
+                                    <span class="turtle-id">#${t.id}</span>
+                                </span>
+                                <span class="turtle-gen-badge gen-${gen}">Gen ${gen}</span>
+                            </div>
+                            <div class="turtle-stats">
+                                <div class="turtle-stat">
+                                    <span class="turtle-stat-icon">⛽</span>
+                                    <div class="fuel-bar"><div class="fuel-bar-fill" style="width: ${fuelPercent}%"></div></div>
+                                    ${Math.round(t.fuel / 1000)}k
+                                </div>
+                                <div class="turtle-stat">
+                                    ${stateClass ? `<span class="turtle-state ${stateClass}">${t.state}</span>` : '<span style="color: var(--success);">idle</span>'}
+                                </div>
+                                <div class="turtle-stat">
+                                    <span class="turtle-stat-icon">📍</span>
+                                    ${t.position ? `${t.position.x},${t.position.y},${t.position.z}` : '?'}
+                                </div>
+                                <div class="turtle-stat">
+                                    <span class="turtle-stat-icon">${isOffline ? '🔴' : '🟢'}</span>
+                                    ${isOffline ? 'offline' : 'online'}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function selectTurtle(id) {
+            selectedTurtle = selectedTurtle === id ? null : id;
+            renderFamilyTree();
+            drawMap();
+            
+            const info = document.getElementById('selectedTurtleInfo');
+            if (selectedTurtle && turtles[selectedTurtle]) {
+                info.style.display = 'block';
+                document.getElementById('selectedName').textContent = turtles[selectedTurtle].label || `T-${selectedTurtle}`;
+            } else {
+                info.style.display = 'none';
+            }
+        }
+
+        // Stats
+        function updateStats() {
+            const all = Object.values(turtles);
+            const gens = new Set(all.map(t => t.generation || 0));
+            const active = all.filter(t => t.state && t.state !== 'idle').length;
+            const totalFuel = all.reduce((sum, t) => sum + (t.fuel || 0), 0);
+
+            document.getElementById('totalTurtles').textContent = all.length;
+            document.getElementById('totalGenerations').textContent = gens.size;
+            document.getElementById('activeTasks').textContent = active;
+            document.getElementById('totalFuel').textContent = Math.round(totalFuel / 1000) + 'k';
+        }
+
+        // Commands
+        function sendCommand(cmd, args = {}) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                notify('Not connected!', 'error');
+                return;
+            }
+
+            const payload = {
+                type: 'command',
+                command: cmd,
+                args: args,
+                targetId: selectedTurtle || 'all'
+            };
+
+            ws.send(JSON.stringify(payload));
+            logConsole(`> ${cmd} ${JSON.stringify(args)}`, 'cmd');
+
+            // Add to history
+            commandHistory.unshift({
+                command: cmd,
+                args: args,
+                target: selectedTurtle || 'all',
+                time: Date.now(),
+                result: null
+            });
+            if (commandHistory.length > 100) commandHistory.pop();
+            saveHistory();
+            renderHistory();
+        }
+
+        function runQuickCommand() {
+            const input = document.getElementById('quickCommand');
+            const cmd = input.value.trim();
+            if (!cmd) return;
+
+            if (cmd.includes('(') || cmd.includes('=')) {
+                sendCommand('exec', { code: cmd });
+            } else {
+                const parts = cmd.split(' ');
+                sendCommand(parts[0], {});
+            }
+            input.value = '';
+        }
+
+        // Prompts
+        function promptQuarry() {
+            const size = prompt('Quarry size (default 8):', '8');
+            const depth = prompt('Depth (default 50):', '50');
+            if (size !== null) {
+                sendCommand('quarry', { size: parseInt(size) || 8, depth: parseInt(depth) || 50 });
+            }
+        }
+
+        function promptTunnel() {
+            const length = prompt('Tunnel length (default 50):', '50');
+            if (length !== null) {
+                sendCommand('tunnel', { length: parseInt(length) || 50 });
+            }
+        }
+
+        function promptSetStation(type) {
+            const side = prompt(`Which side is the ${type === 'fuel' ? 'fuel container' : 'storage chest'}? (front/top/bottom):`, 'front');
+            if (side && ['front', 'top', 'bottom'].includes(side.toLowerCase())) {
+                sendCommand(type === 'fuel' ? 'setFuelStation' : 'setStorageStation', { side: side.toLowerCase() });
+            }
+        }
+
+        // Code Editor
+        function loadTemplate() {
+            const select = document.getElementById('templateSelect');
+            if (select.value && codeTemplates[select.value]) {
+                editor.setValue(codeTemplates[select.value]);
+            }
+            select.value = '';
+        }
+
+        function runCode() {
+            if (!editor) return;
+            const code = editor.getValue();
+            sendCommand('exec', { code: code });
+        }
+
+        function saveScript() {
+            const name = document.getElementById('scriptName').value.trim();
+            if (!name) {
+                notify('Enter a script name first', 'error');
+                return;
+            }
+            savedScripts[name] = editor.getValue();
+            localStorage.setItem('savedScripts', JSON.stringify(savedScripts));
+            notify(`Saved "${name}"`, 'success');
+            renderScripts();
+        }
+
+        function clearEditor() {
+            if (editor) editor.setValue('');
+        }
+
+        function loadScript(name) {
+            if (savedScripts[name] && editor) {
+                editor.setValue(savedScripts[name]);
+                document.getElementById('scriptName').value = name;
+                document.querySelector('.tab[data-tab="code"]').click();
+            }
+        }
+
+        function deleteScript(name) {
+            if (confirm(`Delete script "${name}"?`)) {
+                delete savedScripts[name];
+                localStorage.setItem('savedScripts', JSON.stringify(savedScripts));
+                renderScripts();
+            }
+        }
+
+        function runScriptDirect(name) {
+            if (savedScripts[name]) {
+                sendCommand('exec', { code: savedScripts[name] });
+            }
+        }
+
+        function renderScripts() {
+            const list = document.getElementById('scriptsList');
+            if (Object.keys(savedScripts).length === 0) {
+                list.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-dim);">No saved scripts</div>';
+                return;
+            }
+
+            list.innerHTML = Object.keys(savedScripts).map(name => `
+                <div class="script-item">
+                    <span class="script-name" onclick="loadScript('${name}')">${name}</span>
+                    <div class="script-actions">
+                        <button class="script-btn run" onclick="runScriptDirect('${name}')">▶ Run</button>
+                        <button class="script-btn delete" onclick="deleteScript('${name}')">✕</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Macros
+        function addMacro(cmd) {
+            macroQueue.push({ cmd: cmd, repeat: 1 });
+            renderMacroQueue();
+        }
+
+        function addMacroRepeat() {
+            const count = prompt('Repeat count:', '5');
+            const cmd = prompt('Command to repeat:', 'forward');
+            if (count && cmd) {
+                macroQueue.push({ cmd: cmd, repeat: parseInt(count) || 1 });
+                renderMacroQueue();
+            }
+        }
+
+        function removeMacro(idx) {
+            macroQueue.splice(idx, 1);
+            renderMacroQueue();
+        }
+
+        function renderMacroQueue() {
+            const container = document.getElementById('macroQueue');
+            if (macroQueue.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: var(--text-dim); padding: 20px;">Add commands from the buttons below</div>';
+                return;
+            }
+
+            container.innerHTML = macroQueue.map((m, i) => `
+                <div class="macro-item" draggable="true" data-idx="${i}">
+                    <span class="macro-num">${i + 1}</span>
+                    <span class="macro-cmd">${m.cmd}${m.repeat > 1 ? ` ×${m.repeat}` : ''}</span>
+                    <span class="macro-remove" onclick="removeMacro(${i})">✕</span>
+                </div>
+            `).join('');
+        }
+
+        async function runMacro() {
+            for (const m of macroQueue) {
+                for (let i = 0; i < m.repeat; i++) {
+                    sendCommand(m.cmd);
+                    await new Promise(r => setTimeout(r, 300));
+                }
+            }
+            notify('Macro complete!', 'success');
+        }
+
+        function clearMacro() {
+            macroQueue = [];
+            renderMacroQueue();
+        }
+
+        function saveMacro() {
+            const name = prompt('Macro name:');
+            if (name) {
+                savedMacros[name] = [...macroQueue];
+                localStorage.setItem('savedMacros', JSON.stringify(savedMacros));
+                notify(`Saved macro "${name}"`, 'success');
+            }
+        }
+
+        // History
+        function saveHistory() {
+            localStorage.setItem('commandHistory', JSON.stringify(commandHistory.slice(0, 100)));
+        }
+
+        function renderHistory() {
+            const list = document.getElementById('historyList');
+            if (commandHistory.length === 0) {
+                list.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-dim);">No command history</div>';
+                return;
+            }
+
+            list.innerHTML = commandHistory.slice(0, 50).map(h => `
+                <div class="history-item" onclick="sendCommand('${h.command}', ${JSON.stringify(h.args)})">
+                    <div class="history-item-header">
+                        <span class="history-cmd">${h.command}</span>
+                        <span class="history-time">${formatTime(h.time)}</span>
+                    </div>
+                    <div class="history-result ${h.success === false ? 'fail' : h.success === true ? 'success' : ''}">
+                        ${h.result || 'Pending...'}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function formatTime(ts) {
+            const d = new Date(ts);
+            return d.toLocaleTimeString();
+        }
+
+        // Console
+        function logConsole(msg, type = 'info') {
+            const output = document.getElementById('consoleOutput');
+            const time = new Date().toLocaleTimeString();
+            output.innerHTML += `<div class="console-line ${type}"><span class="console-time">${time}</span> ${msg}</div>`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        // Birth Celebration
+        function celebrateBirth(data) {
+            const turtle = data.turtle || data;
+            notify(`🐣 NEW TURTLE BORN! ${turtle.child || turtle.label}`, 'success');
+            logConsole(`🎉 Birth! Parent: ${turtle.parent}, Child: ${turtle.child}, Gen: ${turtle.generation}`, 'info');
+            
+            // Big celebration popup
+            const popup = document.createElement('div');
+            popup.className = 'birth-celebration';
+            popup.innerHTML = `
+                <div class="birth-title">🐣 New Turtle Born!</div>
+                <div class="birth-info">
+                    <div>Name: <strong>${turtle.child || '???'}</strong></div>
+                    <div>Generation: <strong>${turtle.generation || '?'}</strong></div>
+                    <div>Parent: <strong>${turtle.parent || '?'}</strong></div>
+                </div>
+            `;
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 4000);
+        }
+
+        // Notifications
+        function notify(msg, type = 'info') {
+            const container = document.getElementById('notifications');
+            const el = document.createElement('div');
+            el.className = `notification ${type}`;
+            el.textContent = msg;
+            container.appendChild(el);
+            setTimeout(() => el.remove(), 4000);
+        }
+
+        // Refresh
+        function refreshFleet() {
+            turtles = {};
+            renderFamilyTree();
+            drawMap();
+            notify('Fleet refreshed', 'info');
+        }
+
+        // Cleanup old turtles
+        setInterval(() => {
+            const now = Date.now();
+            Object.keys(turtles).forEach(id => {
+                if (now - turtles[id].lastSeen > 60000) {
+                    turtles[id].offline = true;
+                }
+            });
+            renderFamilyTree();
+            drawMap();
+        }, 10000);
+    </script>
+</body>
+</html>

@@ -683,28 +683,61 @@ Cmd.register("position", function() if Nav then local p=Nav.getPosition() return
 Cmd.register("mine", function(a) if not Miner then return "No Miner" end State.set("currentState","mining") local r=Miner.run() State.set("currentState","idle") return "Mined "..tostring(r) end)
 Cmd.register("quarry", function(a)
     local size = a.size or 8
+    local depth = a.depth or 50
     State.set("currentState","quarrying")
     local mined = 0
-    for layer = 1, 50 do
+    local goingRight = true  -- Track serpentine direction
+    
+    for layer = 1, depth do
         for row = 1, size do
-            for col = 1, size-1 do
+            -- Mine across the row
+            for col = 1, size - 1 do
                 turtle.dig()
-                if not Nav.forward() then Nav.digForward() end
-                mined = mined + 1
-                if shouldStop then State.set("currentState","idle") return "Stopped at "..mined end
-            end
-            if row < size then
-                if row % 2 == 1 then Nav.turnRight() else Nav.turnLeft() end
-                turtle.dig()
+                turtle.digUp()
                 Nav.digForward()
-                if row % 2 == 1 then Nav.turnRight() else Nav.turnLeft() end
+                mined = mined + 1
+                if shouldStop then 
+                    Nav.goHome()
+                    State.set("currentState","idle") 
+                    return "Stopped at "..mined 
+                end
+                if Inv.isFull() then Inv.dropTrash() end
+            end
+            -- Turn to next row (if not last row)
+            if row < size then
+                if goingRight then
+                    Nav.turnRight()
+                    turtle.dig()
+                    turtle.digUp()
+                    Nav.digForward()
+                    Nav.turnRight()
+                else
+                    Nav.turnLeft()
+                    turtle.dig()
+                    turtle.digUp()
+                    Nav.digForward()
+                    Nav.turnLeft()
+                end
+                goingRight = not goingRight
                 mined = mined + 1
             end
         end
-        Nav.turnRight() Nav.turnRight()
-        if not Nav.digDown() then break end
+        -- Go down for next layer
         turtle.digDown()
+        if not Nav.down() then 
+            Nav.goHome()
+            State.set("currentState","idle")
+            return "Quarry hit bottom at "..mined 
+        end
         mined = mined + 1
+        -- Turn around to start next layer
+        Nav.turnRight()
+        Nav.turnRight()
+        goingRight = not goingRight
+        -- Check fuel
+        if turtle.getFuelLevel() < 500 then
+            Inv.refuel(2000)
+        end
     end
     Nav.goHome()
     State.set("currentState","idle")
