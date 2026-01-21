@@ -311,13 +311,70 @@ function I.refuelFromLava()
     turtle.select(bucketSlot)
     local gotLava = false
     
-    -- Try to scoop lava from in front, above, or below
+    -- Method 1: Try to scoop lava from in front, above, or below (vanilla lava)
     if turtle.place() then
-        gotLava = true
-    elseif turtle.placeUp() then
-        gotLava = true
-    elseif turtle.placeDown() then
-        gotLava = true
+        -- Check if we actually got lava (bucket should now be lava_bucket)
+        local it = turtle.getItemDetail()
+        if it and it.name == "minecraft:lava_bucket" then
+            gotLava = true
+        end
+    end
+    if not gotLava and turtle.placeUp() then
+        local it = turtle.getItemDetail()
+        if it and it.name == "minecraft:lava_bucket" then
+            gotLava = true
+        end
+    end
+    if not gotLava and turtle.placeDown() then
+        local it = turtle.getItemDetail()
+        if it and it.name == "minecraft:lava_bucket" then
+            gotLava = true
+        end
+    end
+    
+    -- Method 2: Try fluid drawer / fluid storage interaction
+    -- Some mods require drop bucket -> suck filled bucket
+    if not gotLava then
+        for _, dir in ipairs({"front", "top", "bottom"}) do
+            local p = peripheral.wrap(dir)
+            if p and p.tanks then
+                local tanks = p.tanks()
+                for _, tank in pairs(tanks or {}) do
+                    if tank.name and (tank.name:find("lava") or tank.name:find("Lava")) and tank.amount >= 1000 then
+                        -- Has lava! Try drop/suck method for fluid drawers
+                        turtle.select(bucketSlot)
+                        local dropFn = dir == "top" and turtle.dropUp or (dir == "bottom" and turtle.dropDown or turtle.drop)
+                        local suckFn = dir == "top" and turtle.suckUp or (dir == "bottom" and turtle.suckDown or turtle.suck)
+                        
+                        if dropFn(1) then
+                            sleep(0.1)
+                            if suckFn(1) then
+                                local it = turtle.getItemDetail()
+                                if it and it.name == "minecraft:lava_bucket" then
+                                    gotLava = true
+                                    break
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            if gotLava then break end
+        end
+    end
+    
+    -- Method 3: Try pullFluid if available (CC:Tweaked 1.20+ fluid API)
+    if not gotLava then
+        for _, dir in ipairs({"front", "top", "bottom"}) do
+            local p = peripheral.wrap(dir)
+            if p and p.pullFluid then
+                -- Some fluid containers support direct pulling
+                pcall(function()
+                    -- This works with some modded tanks
+                    p.pullFluid("turtle", 1000, "minecraft:lava")
+                end)
+            end
+        end
     end
     
     if gotLava then
@@ -330,7 +387,7 @@ function I.refuelFromLava()
     end
     
     turtle.select(1)
-    return false, "No lava source found"
+    return false, "No lava source found (try facing drawer directly)"
 end
 
 -- Refuel from adjacent container (chest, tank, etc)
