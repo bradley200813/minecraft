@@ -68,13 +68,16 @@ wsServer.on('upgrade', (req, socket) => {
     // Handle incoming WebSocket messages (commands from dashboard)
     socket.on('data', (buffer) => {
         try {
+            console.log('[WS] Received data, length:', buffer.length);
             const data = parseWebSocketFrame(buffer);
+            console.log('[WS] Parsed data:', data);
             if (data) {
                 const msg = JSON.parse(data);
+                console.log('[WS] Message:', msg);
                 handleDashboardCommand(msg);
             }
         } catch (e) {
-            // Ignore parse errors
+            console.log('[WS] Parse error:', e.message);
         }
     });
 });

@@ -285,7 +285,17 @@ end
 
 -- Check if modem is available
 function Comms.hasModem()
-    return modemSide ~= nil
+    if modemSide ~= nil then
+        return true, modemSide
+    end
+    -- Check all sides for modem
+    local sides = {"left", "right", "top", "bottom", "front", "back"}
+    for _, side in ipairs(sides) do
+        if peripheral.getType(side) == "modem" then
+            return true, side
+        end
+    end
+    return false
 end
 
 -- Get my ID

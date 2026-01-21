@@ -447,9 +447,51 @@ Cmd.register("position", function() if Nav then local p=Nav.getPosition() return
 
 -- Mining Tasks
 Cmd.register("mine", function(a) if not Miner then return "No Miner" end State.set("currentState","mining") local r=Miner.run() State.set("currentState","idle") return "Mined "..tostring(r) end)
-Cmd.register("quarry", function(a) if not Miner then return "No Miner" end Miner.configure({quarrySize=a.size or 8}) State.set("currentState","quarrying") Miner.quarryMine() State.set("currentState","idle") return "Quarry done" end)
-Cmd.register("tunnel", function(a) if not Miner then return "No Miner" end Miner.configure({tunnelLength=a.length or 50}) State.set("currentState","tunneling") Miner.tunnelMine() State.set("currentState","idle") return "Tunnel done" end)
-Cmd.register("branch", function(a) if not Miner then return "No Miner" end State.set("currentState","mining") Miner.branchMine() State.set("currentState","idle") return "Branch done" end)
+Cmd.register("quarry", function(a)
+    local size = a.size or 8
+    State.set("currentState","quarrying")
+    local mined = 0
+    for layer = 1, 50 do
+        for row = 1, size do
+            for col = 1, size-1 do
+                turtle.dig()
+                if not Nav.forward() then Nav.digForward() end
+                mined = mined + 1
+                if shouldStop then State.set("currentState","idle") return "Stopped at "..mined end
+            end
+            if row < size then
+                if row % 2 == 1 then Nav.turnRight() else Nav.turnLeft() end
+                turtle.dig()
+                Nav.digForward()
+                if row % 2 == 1 then Nav.turnRight() else Nav.turnLeft() end
+                mined = mined + 1
+            end
+        end
+        Nav.turnRight() Nav.turnRight()
+        if not Nav.digDown() then break end
+        turtle.digDown()
+        mined = mined + 1
+    end
+    Nav.goHome()
+    State.set("currentState","idle")
+    return "Quarry done: "..mined
+end)
+Cmd.register("tunnel", function(a)
+    local length = a.length or 50
+    State.set("currentState","tunneling")
+    local mined = 0
+    for i = 1, length do
+        turtle.dig() turtle.digUp()
+        if not Nav.forward() then Nav.digForward() end
+        mined = mined + 2
+        if shouldStop then State.set("currentState","idle") return "Stopped at "..mined end
+        if Inv.isFull() then Inv.dropTrash() end
+        if turtle.getFuelLevel() < 100 then Inv.refuel(500) end
+    end
+    State.set("currentState","idle")
+    return "Tunnel done: "..mined
+end)
+Cmd.register("branch", function(a) if not Miner then return "No Miner" end State.set("currentState","mining") local r=Miner.run() State.set("currentState","idle") return "Branch done: "..tostring(r) end)
 
 -- Crafting & Replication
 Cmd.register("craft", function(a) if not Crafter then return "No Crafter" end local ok,r=Crafter.craft(a.recipe or a.item,a.count or 1) return ok and "Crafted "..r or "Failed: "..tostring(r) end)
