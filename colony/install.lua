@@ -68,6 +68,8 @@ local N = {}
 local pos = {x=0, y=0, z=0}
 local facing = 0
 local home = {x=0, y=0, z=0}
+local fuelStation = nil  -- {x, y, z, side} where side is where the fuel container is
+local storageStation = nil  -- {x, y, z, side} where side is where the chest is
 local D = {{x=0,z=-1}, {x=1,z=0}, {x=0,z=1}, {x=-1,z=0}}
 
 function N.init()
@@ -197,6 +199,46 @@ end
 
 function N.goHome()
     N.goTo(home.x, home.y, home.z)
+end
+
+function N.setFuelStation(p, side)
+    if p then
+        fuelStation = {x=p.x, y=p.y, z=p.z, side=side or "front"}
+    else
+        fuelStation = {x=pos.x, y=pos.y, z=pos.z, side=side or "front"}
+    end
+end
+
+function N.getFuelStation()
+    return fuelStation
+end
+
+function N.goToFuelStation()
+    if fuelStation then
+        N.goTo(fuelStation.x, fuelStation.y, fuelStation.z)
+        return true, fuelStation.side
+    end
+    return false, "No fuel station set"
+end
+
+function N.setStorageStation(p, side)
+    if p then
+        storageStation = {x=p.x, y=p.y, z=p.z, side=side or "front"}
+    else
+        storageStation = {x=pos.x, y=pos.y, z=pos.z, side=side or "front"}
+    end
+end
+
+function N.getStorageStation()
+    return storageStation
+end
+
+function N.goToStorageStation()
+    if storageStation then
+        N.goTo(storageStation.x, storageStation.y, storageStation.z)
+        return true, storageStation.side
+    end
+    return false, "No storage station set"
 end
 
 return N
@@ -346,6 +388,76 @@ function I.findEmptySlot()
         end
     end
     return nil
+end
+
+-- Refuel until max from a container (keeps pulling fuel items)
+function I.refuelToMax(side)
+    side = side or "front"
+    local limit = turtle.getFuelLimit()
+    local startFuel = turtle.getFuelLevel()
+    local attempts = 0
+    local maxAttempts = 100  -- Safety limit
+    
+    while turtle.getFuelLevel() < limit and attempts < maxAttempts do
+        attempts = attempts + 1
+        local emptySlot = I.findEmptySlot()
+        if not emptySlot then
+            -- Try to refuel what we have first
+            for i = 1, 16 do
+                turtle.select(i)
+                turtle.refuel()
+            end
+            emptySlot = I.findEmptySlot()
+            if not emptySlot then
+                turtle.select(1)
+                return turtle.getFuelLevel(), "Inventory full"
+            end
+        end
+        
+        turtle.select(emptySlot)
+        local gotItem = false
+        if side == "front" then gotItem = turtle.suck(64)
+        elseif side == "top" then gotItem = turtle.suckUp(64)
+        elseif side == "bottom" then gotItem = turtle.suckDown(64)
+        end
+        
+        if gotItem then
+            turtle.refuel()
+        else
+            -- No more fuel in container
+            break
+        end
+    end
+    
+    -- Final refuel pass on any remaining items
+    for i = 1, 16 do
+        turtle.select(i)
+        turtle.refuel()
+    end
+    turtle.select(1)
+    
+    local gained = turtle.getFuelLevel() - startFuel
+    return turtle.getFuelLevel(), "Gained "..gained.." fuel"
+end
+
+-- Refuel to max using lava (keeps scooping until full)
+function I.refuelToMaxLava()
+    local limit = turtle.getFuelLimit()
+    local startFuel = turtle.getFuelLevel()
+    local attempts = 0
+    local maxAttempts = 200  -- Safety limit (lava bucket = 1000 fuel, limit = 100000)
+    
+    while turtle.getFuelLevel() < limit and attempts < maxAttempts do
+        attempts = attempts + 1
+        local ok, result = I.refuelFromLava()
+        if not ok then
+            break
+        end
+        sleep(0.1)  -- Small delay for lava flow
+    end
+    
+    local gained = turtle.getFuelLevel() - startFuel
+    return turtle.getFuelLevel(), "Gained "..gained.." fuel from lava"
 end
 
 function I.dropTrash()
@@ -665,6 +777,57 @@ Cmd.register("resume", function() shouldStop=false if State then State.set("shou
 Cmd.register("auto", function() if not Brain then return "No Brain" end shouldStop=false Brain.run() return "Auto done" end)
 Cmd.register("status", function() return "ID:"..os.getComputerID().." Fuel:"..turtle.getFuelLevel().." State:"..(State and State.get("currentState") or "?") end)
 Cmd.register("dance", function() for i=1,4 do turtle.turnLeft() sleep(0.2) end for i=1,4 do turtle.turnRight() sleep(0.2) end return "Dance!" end)
+
+-- Fuel Station
+Cmd.register("setFuelStation", function(a)
+    if not Nav then return "No Nav" end
+    local side = a.side or "front"
+    Nav.setFuelStation(nil, side)
+    return "Fuel station set ("..side..")"
+end)
+Cmd.register("goRefuel", function(a)
+    if not Nav or not Inv then return "No Nav/Inv" end
+    local ok, side = Nav.goToFuelStation()
+    if not ok then return side end
+    local fuel, msg = Inv.refuelToMax(side)
+    Nav.goHome()
+    return "Fuel: "..fuel.." - "..msg
+end)
+Cmd.register("goRefuelLava", function(a)
+    if not Nav or not Inv then return "No Nav/Inv" end
+    local ok, side = Nav.goToFuelStation()
+    if not ok then return side end
+    local fuel, msg = Inv.refuelToMaxLava()
+    Nav.goHome()
+    return "Fuel: "..fuel.." - "..msg
+end)
+Cmd.register("refuelMax", function(a)
+    if not Inv then return "No Inv" end
+    local side = a.side or "front"
+    local fuel, msg = Inv.refuelToMax(side)
+    return "Fuel: "..fuel.." - "..msg
+end)
+Cmd.register("refuelMaxLava", function(a)
+    if not Inv then return "No Inv" end
+    local fuel, msg = Inv.refuelToMaxLava()
+    return "Fuel: "..fuel.." - "..msg
+end)
+
+-- Storage Station
+Cmd.register("setStorageStation", function(a)
+    if not Nav then return "No Nav" end
+    local side = a.side or "front"
+    Nav.setStorageStation(nil, side)
+    return "Storage station set ("..side..")"
+end)
+Cmd.register("goDeposit", function(a)
+    if not Nav or not Inv then return "No Nav/Inv" end
+    local ok, side = Nav.goToStorageStation()
+    if not ok then return side end
+    Inv.dumpToChest()
+    Nav.goHome()
+    return "Deposited items"
+end)
 
 -- Custom code execution
 Cmd.register("exec", function(a)

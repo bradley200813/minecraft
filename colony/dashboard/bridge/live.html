@@ -664,6 +664,26 @@
                     </div>
                 </div>
 
+                <!-- Stations Section -->
+                <div class="control-section">
+                    <div class="control-section-title">⛽ Fuel Station</div>
+                    <div class="control-actions-3">
+                        <button class="control-btn action small" onclick="promptSetFuelStation()" title="Set current position as fuel station">📍 Set Station</button>
+                        <button class="control-btn warning" onclick="sendCommand('goRefuel')" title="Go to fuel station and refuel to max">🚀 Auto Refuel</button>
+                        <button class="control-btn small" onclick="sendCommand('goRefuelLava')" title="Go to fuel station and refuel from lava">🌋 Auto Lava</button>
+                        <button class="control-btn small" onclick="promptRefuelMax()" title="Refuel to max from adjacent container">⛽ Fill Max</button>
+                        <button class="control-btn small" onclick="sendCommand('refuelMaxLava')" title="Refuel to max from lava">🔥 Lava Max</button>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <div class="control-section-title">📦 Storage Station</div>
+                    <div class="control-actions-3">
+                        <button class="control-btn action small" onclick="promptSetStorageStation()" title="Set current position as storage">📍 Set Storage</button>
+                        <button class="control-btn warning" onclick="sendCommand('goDeposit')" title="Go to storage and deposit items">🏪 Auto Deposit</button>
+                    </div>
+                </div>
+
                 <!-- Inventory Section -->
                 <div class="control-section">
                     <div class="control-section-title">Inventory</div>
@@ -1023,6 +1043,36 @@
                 } else {
                     showNotification('Invalid coordinates format', 'error');
                 }
+            }
+        }
+
+        // Prompt for fuel station side
+        function promptSetFuelStation() {
+            const side = prompt('Which side is the fuel container? (front/top/bottom):', 'front');
+            if (side && ['front', 'top', 'bottom'].includes(side.toLowerCase())) {
+                sendCommand('setFuelStation', { side: side.toLowerCase() });
+            } else if (side) {
+                showNotification('Invalid side. Use: front, top, or bottom', 'error');
+            }
+        }
+
+        // Prompt for storage station side
+        function promptSetStorageStation() {
+            const side = prompt('Which side is the storage chest? (front/top/bottom):', 'front');
+            if (side && ['front', 'top', 'bottom'].includes(side.toLowerCase())) {
+                sendCommand('setStorageStation', { side: side.toLowerCase() });
+            } else if (side) {
+                showNotification('Invalid side. Use: front, top, or bottom', 'error');
+            }
+        }
+
+        // Prompt for refuel max from side
+        function promptRefuelMax() {
+            const side = prompt('Which side is the fuel? (front/top/bottom):', 'front');
+            if (side && ['front', 'top', 'bottom'].includes(side.toLowerCase())) {
+                sendCommand('refuelMax', { side: side.toLowerCase() });
+            } else if (side) {
+                showNotification('Invalid side. Use: front, top, or bottom', 'error');
             }
         }
 
