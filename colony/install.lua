@@ -716,14 +716,15 @@ print("========================================")
 local stateFile = "/.colony/state.json"
 
 local function loadLibs()
-    local State = dofile("/colony/lib/state.lua")
-    local Inv = dofile("/colony/lib/inv.lua")
-    local Nav = dofile("/colony/lib/nav.lua")
-    local Comms = dofile("/colony/lib/comms.lua")
-    local Reporter = dofile("/colony/lib/reporter.lua")
-    local Miner = dofile("/colony/roles/miner.lua")
-    local Crafter = dofile("/colony/roles/crafter.lua")
-    local Brain = dofile("/colony/brain.lua")
+    package.path = package.path .. ";/colony/?.lua;/colony/lib/?.lua;/colony/roles/?.lua"
+    local State = require("lib.state")
+    local Inv = require("lib.inv")
+    local Nav = require("lib.nav")
+    local Comms = require("lib.comms")
+    local Reporter = require("lib.reporter")
+    local Miner = require("roles.miner")
+    local Crafter = require("roles.crafter")
+    local Brain = require("brain")
     return State, Inv, Nav, Comms, Reporter, Miner, Crafter, Brain
 end
 
@@ -792,14 +793,16 @@ print("  EVE - THE FIRST")
 print("========================================")
 print("")
 
-local State = dofile("/colony/lib/state.lua")
-local Inv = dofile("/colony/lib/inv.lua")
-local Nav = dofile("/colony/lib/nav.lua")
-local Comms = dofile("/colony/lib/comms.lua")
-local Reporter = dofile("/colony/lib/reporter.lua")
-local Miner = dofile("/colony/roles/miner.lua")
-local Crafter = dofile("/colony/roles/crafter.lua")
-local Brain = dofile("/colony/brain.lua")
+package.path = package.path .. ";/colony/?.lua;/colony/lib/?.lua;/colony/roles/?.lua"
+
+local State = require("lib.state")
+local Inv = require("lib.inv")
+local Nav = require("lib.nav")
+local Comms = require("lib.comms")
+local Reporter = require("lib.reporter")
+local Miner = require("roles.miner")
+local Crafter = require("roles.crafter")
+local Brain = require("brain")
 
 -- Initialize
 State.load()

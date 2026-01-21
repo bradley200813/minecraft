@@ -1,21 +1,14 @@
 -- ============================================
 -- GITHUB INSTALLER FOR CC:TWEAKED
 -- ============================================
--- Downloads colony files directly from your GitHub repo
---
--- SETUP:
--- 1. Push your minecraft folder to GitHub
--- 2. Edit REPO below with your username/repo
--- 3. Run: pastebin get <code> install
---    Or:  wget https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main/colony/github-install.lua install
--- 4. Run: install
+-- wget run https://raw.githubusercontent.com/bradley200813/minecraft/main/colony/github-install.lua
 
 -- ===========================================
--- CONFIGURE THIS WITH YOUR GITHUB INFO
+-- GITHUB CONFIGURATION
 -- ===========================================
-local GITHUB_USER = "bradley200813"  
-local GITHUB_REPO = "minecraft"       
-local BRANCH = "main"                        
+local GITHUB_USER = "bradley200813"
+local GITHUB_REPO = "minecraft"
+local BRANCH = "main"
 -- ===========================================
 
 local BASE_URL = "https://raw.githubusercontent.com/" .. GITHUB_USER .. "/" .. GITHUB_REPO .. "/" .. BRANCH .. "/colony/"
@@ -40,12 +33,13 @@ local FILES = {
     "brain.lua",
     "startup.lua",
     "eve.lua",
+    
+    -- Diagnostics
+    "diagnose.lua",
 }
 
 -- Optional files (won't fail if missing)
 local OPTIONAL = {
-    "dashboard/server.lua",
-    "dashboard/monitor.lua",
     "dashboard/bridge/sender.lua",
 }
 

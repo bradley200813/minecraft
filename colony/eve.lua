@@ -10,14 +10,14 @@ print("  Generation 0 - The Mother of All")
 print("========================================")
 print("")
 
--- Load libraries using dofile (CC:Tweaked compatible)
-local State = dofile("/colony/lib/state.lua")
-local Inv = dofile("/colony/lib/inv.lua")
-local Nav = dofile("/colony/lib/nav.lua")
-local Comms = dofile("/colony/lib/comms.lua")
-local Miner = dofile("/colony/roles/miner.lua")
-local Crafter = dofile("/colony/roles/crafter.lua")
-local Brain = dofile("/colony/brain.lua")
+-- Load libraries
+local State = require("colony.lib.state")
+local Inv = require("colony.lib.inv")
+local Nav = require("colony.lib.nav")
+local Comms = require("colony.lib.comms")
+local Miner = require("colony.roles.miner")
+local Crafter = require("colony.roles.crafter")
+local Brain = require("colony.brain")
 
 -- Initialize Eve's identity
 local function initEve()
