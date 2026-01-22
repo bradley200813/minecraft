@@ -36,10 +36,15 @@ State.set("generation", 0)
 Nav.init()
 Nav.setHome()
 
+local commsOk = false
 if Comms.hasModem() then
-    Comms.open()
-    Comms.announce("eve_online")
-    print("[OK] Modem opened")
+    commsOk = Comms.open()
+    if commsOk then
+        Comms.announce("eve_online")
+        print("[OK] Modem opened")
+    else
+        print("[ERROR] Failed to open modem!")
+    end
 else
     print("[WARN] No modem - attach wireless modem!")
 end
@@ -63,7 +68,7 @@ local function menu()
         print("6. Status")
         print("7. Test Broadcast")
         print("8. Remote Control Mode")
-        print("9. Birth Turtle 🐣")
+        print("9. Birth Turtle")
         print("0. Exit")
         print("")
         write("Choice: ")
@@ -176,4 +181,21 @@ local function menu()
     end
 end
 
-menu()
+-- Send initial heartbeat so we show up on dashboard immediately
+print("")
+print("Sending initial heartbeat...")
+Reporter.heartbeat()
+
+-- Run menu with background heartbeats
+parallel.waitForAny(
+    function()
+        -- Background heartbeat while in menu
+        while true do
+            Reporter.heartbeat()
+            sleep(10)
+        end
+    end,
+    function()
+        menu()
+    end
+)
