@@ -68,16 +68,17 @@ wsServer.on('upgrade', (req, socket) => {
     // Handle incoming WebSocket messages (commands from dashboard)
     socket.on('data', (buffer) => {
         try {
-            console.log('[WS] Received data, length:', buffer.length);
-            const data = parseWebSocketFrame(buffer);
-            console.log('[WS] Parsed data:', data);
+            const data = parseWebSocketFrame(buffer, socket);
             if (data) {
+                console.log('[WS] Received message:', data.substring(0, 100));
                 const msg = JSON.parse(data);
-                console.log('[WS] Message:', msg);
                 handleDashboardCommand(msg);
             }
         } catch (e) {
-            console.log('[WS] Parse error:', e.message);
+            // Only log actual parse errors, not ping/pong
+            if (e.message.includes('JSON')) {
+                console.log('[WS] JSON parse error:', e.message);
+            }
         }
     });
 });
@@ -118,8 +119,36 @@ function broadcast(data) {
 }
 
 // Parse incoming WebSocket frame (unmask client data)
-function parseWebSocketFrame(buffer) {
+function parseWebSocketFrame(buffer, socket) {
     if (buffer.length < 2) return null;
+    
+    const firstByte = buffer[0];
+    const opcode = firstByte & 0x0F;
+    
+    // Handle different opcodes
+    // 0x1 = text frame, 0x2 = binary, 0x8 = close, 0x9 = ping, 0xA = pong
+    if (opcode === 0x8) {
+        // Close frame - ignore
+        return null;
+    }
+    if (opcode === 0x9) {
+        // Ping frame - send pong
+        if (socket) {
+            const pongFrame = Buffer.alloc(2);
+            pongFrame[0] = 0x8A; // pong opcode
+            pongFrame[1] = 0;
+            socket.write(pongFrame);
+        }
+        return null;
+    }
+    if (opcode === 0xA) {
+        // Pong frame - ignore
+        return null;
+    }
+    if (opcode !== 0x1 && opcode !== 0x2) {
+        // Not a text or binary frame
+        return null;
+    }
     
     const secondByte = buffer[1];
     const isMasked = Boolean((secondByte >> 7) & 0x1);
