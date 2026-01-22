@@ -10,14 +10,14 @@
 --   update <file>    - Update specific file (e.g., "update brain.lua")
 --
 -- One-liner install:
---   wget run https://raw.githubusercontent.com/bradley200813/minecraft/master/colony/update.lua
+--   wget run https://raw.githubusercontent.com/bradley200813/minecraft/main/colony/update.lua
 
 -- ===========================================
 -- CONFIGURE THIS
 -- ===========================================
 local GITHUB_USER = "bradley200813"
 local GITHUB_REPO = "minecraft"
-local BRANCH = "master"
+local BRANCH = "main"
 -- ===========================================
 
 local BASE_URL = "https://raw.githubusercontent.com/" .. GITHUB_USER .. "/" .. GITHUB_REPO .. "/" .. BRANCH .. "/colony/"

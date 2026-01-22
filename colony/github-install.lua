@@ -15,7 +15,7 @@
 -- ===========================================
 local GITHUB_USER = "bradley200813"
 local GITHUB_REPO = "minecraft"
-local BRANCH = "master"
+local BRANCH = "main"
 -- ===========================================
 
 local BASE_URL = "https://raw.githubusercontent.com/" .. GITHUB_USER .. "/" .. GITHUB_REPO .. "/" .. BRANCH .. "/colony/"
