@@ -728,6 +728,72 @@ Commander.register("dance", function(args)
 end)
 
 -- ==========================================
+-- SELF-REPLICATION COMMANDS
+-- ==========================================
+
+Commander.register("birth", function(args)
+    if not Crafter then
+        return "Crafter module not available"
+    end
+    
+    local canBirth, missing = Crafter.canBirthTurtle()
+    if not canBirth then
+        local missingStr = ""
+        for mat, count in pairs(missing) do
+            missingStr = missingStr .. mat .. ":" .. count .. " "
+        end
+        return "Missing materials: " .. missingStr
+    end
+    
+    -- Get current generation
+    local myGen = 0
+    if State then
+        myGen = State.get("generation") or 0
+    end
+    local childGen = myGen + 1
+    
+    local success, result = Crafter.birthTurtle(childGen)
+    if success then
+        return "🐣 Birth successful! Child is generation " .. childGen
+    else
+        return "Birth failed: " .. tostring(result)
+    end
+end)
+
+Commander.register("canBirth", function(args)
+    if not Crafter then
+        return "Crafter module not available"
+    end
+    
+    local canBirth, missing = Crafter.canBirthTurtle()
+    if canBirth then
+        return "Ready to birth! ✅"
+    else
+        local missingStr = ""
+        for mat, count in pairs(missing) do
+            missingStr = missingStr .. mat .. ":" .. count .. " "
+        end
+        return "Not ready. Missing: " .. missingStr
+    end
+end)
+
+Commander.register("craftStatus", function(args)
+    if not Crafter then
+        return "Crafter module not available"
+    end
+    
+    local recipes = Crafter.listRecipes()
+    local result = {}
+    for _, recipe in ipairs(recipes) do
+        table.insert(result, {
+            name = recipe.name,
+            canCraft = recipe.canCraft,
+        })
+    end
+    return textutils.serialize(result)
+end)
+
+-- ==========================================
 -- COMMAND LISTENER
 -- ==========================================
 
@@ -749,6 +815,22 @@ function Commander.handleMessage(senderId, msg)
             Commander.reportResult(commandId, success, result)
         end
         
+        return true
+    elseif msg.type == "BOOTSTRAP_CODE" then
+        -- Received bootstrap code from parent
+        print("[CMD] Received bootstrap code from parent " .. senderId)
+        local code = msg.data and msg.data.code
+        local generation = msg.data and msg.data.generation or 1
+        
+        if code then
+            -- Save and execute the bootstrap
+            local f = fs.open("/startup.lua", "w")
+            f.write(code)
+            f.close()
+            print("[CMD] Bootstrap saved, rebooting...")
+            sleep(1)
+            os.reboot()
+        end
         return true
     end
     return false

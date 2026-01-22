@@ -63,6 +63,7 @@ local function menu()
         print("6. Status")
         print("7. Test Broadcast")
         print("8. Remote Control Mode")
+        print("9. Birth Turtle 🐣")
         print("0. Exit")
         print("")
         write("Choice: ")
@@ -111,6 +112,7 @@ local function menu()
             print("Position: " .. textutils.serialize(Nav.getPosition()))
             print("Free slots: " .. Inv.freeSlots())
             print("Modem: " .. (Comms.hasModem() and "Yes" or "No"))
+            Crafter.status()
             
         elseif choice == "7" then
             print("Sending 3 test broadcasts...")
@@ -140,6 +142,32 @@ local function menu()
                     Commander.listen()
                 end
             )
+            
+        elseif choice == "9" then
+            print("")
+            print("=== BIRTH TURTLE ===")
+            Crafter.status()
+            print("")
+            local canBirth, missing = Crafter.canBirthTurtle()
+            if canBirth then
+                print("Ready to birth! Proceed? (y/n)")
+                write("> ")
+                local confirm = read()
+                if confirm == "y" or confirm == "Y" then
+                    local gen = State.get("generation") or 0
+                    local success, result = Crafter.birthTurtle(gen + 1)
+                    if success then
+                        print("🐣 Birth successful!")
+                        print("Child ID: " .. tostring(result.childId))
+                    else
+                        print("Birth failed: " .. tostring(result))
+                    end
+                else
+                    print("Cancelled.")
+                end
+            else
+                print("Cannot birth. Missing materials above.")
+            end
             
         elseif choice == "0" then
             print("Goodbye!")

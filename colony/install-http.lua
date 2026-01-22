@@ -36,10 +36,6 @@ local FILES = {
     -- Roles
     "/colony/roles/miner.lua",
     "/colony/roles/crafter.lua",
-    
-    -- Updater
-    "/colony/update.lua",
-    "/colony/version.txt",
 }
 
 print("========================================")

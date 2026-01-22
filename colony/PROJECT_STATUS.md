@@ -47,7 +47,7 @@ A self-replicating turtle colony system for CC:Tweaked (Minecraft mod) with a re
 
 ---
 
-## Current Status: ✅ WORKING
+## Current Status: ✅ WORKING (Self-Replication Enabled!)
 
 ### What Works
 - [x] **Installer** - `install.lua` creates all files with embedded code
@@ -61,17 +61,19 @@ A self-replicating turtle colony system for CC:Tweaked (Minecraft mod) with a re
 - [x] **Web Dashboard** - Real-time turtle map and status (live.html)
 - [x] **ngrok Tunnel** - Allows remote Minecraft servers to reach dashboard
 - [x] **Remote Control** - Control turtles from web dashboard! 🎮
+- [x] **Turtle Crafting** - Full crafting system with recipes
+- [x] **Turtle Birth** - Creates Crafty Mining Turtles with pickaxe + crafting table
+- [x] **Self-Replication** - Full colony expansion loop! 🐣
 
 ### What's Partially Working
 - [ ] **GPS Integration** - Works if GPS towers exist, falls back to relative positioning
-- [ ] **GitHub Downloads** - Branch sync issues (use Pastebin instead)
+- [ ] **GitHub Downloads** - Branch sync issues (use Pastebin or HTTP install instead)
+- [ ] **Child Software Install** - HTTP download works, Pastebin fallback needs paste ID
 
 ### What's Not Implemented Yet
-- [ ] **Turtle Crafting** - Recipe and crafting logic exists but not fully tested
-- [ ] **Turtle Birth** - Placing and programming new turtles
-- [ ] **Self-Replication** - Full colony expansion loop
-- [ ] **Resource Sharing** - Turtles helping each other
+- [ ] **Resource Sharing** - Turtles helping each other with materials
 - [ ] **Ore Detection** - Smart mining based on ore location
+- [ ] **Disk-based Programming** - Using disk drives to program children (alternative method)
 
 ---
 
@@ -85,13 +87,13 @@ A self-replicating turtle colony system for CC:Tweaked (Minecraft mod) with a re
 │   ├── inv.lua        # Inventory management
 │   ├── comms.lua      # Rednet communication
 │   ├── reporter.lua   # Status broadcasting
-│   └── commander.lua  # Remote command handler 🆕
+│   └── commander.lua  # Remote command handler (includes birth command)
 ├── roles/
 │   ├── miner.lua      # Mining behaviors
-│   └── crafter.lua    # Crafting & turtle birth
+│   └── crafter.lua    # Crafting & turtle birth (self-replication!)
 ├── brain.lua          # AI decision engine
 ├── startup.lua        # Boot sequence
-├── eve.lua            # Eve's interactive menu
+├── eve.lua            # Eve's interactive menu (option 9 = Birth Turtle)
 ├── test.lua           # Rednet connectivity test
 ├── bridge.lua         # Web bridge (runs on Computer, not Turtle)
 ├── install.lua        # All-in-one installer
@@ -101,6 +103,65 @@ A self-replicating turtle colony system for CC:Tweaked (Minecraft mod) with a re
         ├── live.html  # Browser dashboard (with control panel)
         └── package.json
 ```
+
+---
+
+## Self-Replication System 🐣
+
+### How It Works
+
+1. **Material Collection** - Eve mines and collects:
+   - 7 Iron Ingots
+   - 3 Diamonds  
+   - 1 Redstone
+   - 6 Glass (for glass panes)
+   - 7 Stone/Cobblestone
+   - 13 Planks (from logs)
+
+2. **Crafting Chain** - Eve crafts in order:
+   - Sticks (from planks)
+   - Glass Panes (from glass)
+   - Chest (from planks)
+   - Computer (from stone + redstone + glass pane)
+   - Diamond Pickaxe (from diamonds + sticks)
+   - Crafting Table (from planks)
+   - Basic Turtle (from iron + computer + chest)
+   - Mining Turtle (turtle + diamond pickaxe)
+   - Crafty Mining Turtle (mining turtle + crafting table)
+
+3. **Deployment** - Eve:
+   - Places the new turtle in an empty space
+   - Transfers fuel (coal/charcoal) to the child
+   - Transfers a wireless modem if available
+   - Turns on the child turtle
+
+4. **Child Bootstrap** - The new turtle:
+   - Refuels from its inventory
+   - Equips the wireless modem
+   - Sets its label (Worker-ID)
+   - Downloads colony software from HTTP server
+   - Reboots and starts autonomous mode
+
+### Using Self-Replication
+
+**From Eve Menu:**
+```
+=== EVE MENU ===
+...
+9. Birth Turtle 🐣
+```
+
+**From Web Dashboard (Remote Command):**
+```
+birth        - Birth a new turtle
+canBirth     - Check if ready to birth
+craftStatus  - Show craftable recipes
+```
+
+**Autonomous Mode:**
+When in Brain mode, Eve will automatically birth turtles when:
+- All materials are available
+- No higher priority tasks (low fuel, full inventory)
 
 ---
 
