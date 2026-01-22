@@ -42,10 +42,25 @@ end
 
 -- Send heartbeat
 function Reporter.heartbeat()
-    if not Comms then return false end
+    if not Comms then 
+        print("[REPORTER] No Comms module!")
+        return false 
+    end
     
-    local report = Reporter.buildReport()
-    return Comms.broadcast(Comms.MSG.HEARTBEAT, report)
+    local ok, report = pcall(Reporter.buildReport)
+    if not ok then
+        print("[REPORTER] Failed to build report: " .. tostring(report))
+        return false
+    end
+    
+    local msgType = Comms.MSG and Comms.MSG.HEARTBEAT or "heartbeat"
+    local success = Comms.broadcast(msgType, report)
+    
+    if not success then
+        print("[REPORTER] Broadcast failed - modem closed?")
+    end
+    
+    return success
 end
 
 -- Report specific event
@@ -100,8 +115,23 @@ end
 
 -- Background reporting loop
 function Reporter.startReporting()
+    print("[REPORTER] Starting heartbeat loop...")
+    local failures = 0
     while true do
-        Reporter.heartbeat()
+        local ok, err = pcall(Reporter.heartbeat)
+        if not ok then
+            failures = failures + 1
+            print("[REPORTER] Error: " .. tostring(err))
+            if failures > 5 then
+                print("[REPORTER] Too many failures, retrying modem...")
+                if Comms and Comms.open then
+                    Comms.open()
+                end
+                failures = 0
+            end
+        else
+            failures = 0
+        end
         sleep(REPORT_INTERVAL)
     end
 end

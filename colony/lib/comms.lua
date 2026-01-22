@@ -65,26 +65,43 @@ function Comms.open()
     -- Find modem
     local sides = {"left", "right", "top", "bottom", "front", "back"}
     for _, side in ipairs(sides) do
-        if peripheral.getType(side) == "modem" then
+        local ptype = peripheral.getType(side)
+        if ptype == "modem" then
             modemSide = side
+            print("[COMMS] Found modem on " .. side)
             break
         end
     end
     
     if not modemSide then
-        print("[COMMS] No modem found!")
+        print("[COMMS] ERROR: No modem found on any side!")
+        print("[COMMS] Make sure turtle has a wireless modem equipped")
+        isOpen = false
         return false
     end
     
     -- Open rednet
-    rednet.open(modemSide)
+    local ok, err = pcall(rednet.open, modemSide)
+    if not ok then
+        print("[COMMS] ERROR opening rednet: " .. tostring(err))
+        isOpen = false
+        return false
+    end
+    
     isOpen = true
     
     -- Host on protocol
-    rednet.host(PROTOCOL, os.getComputerLabel() or ("Turtle-" .. myId))
+    pcall(function()
+        rednet.host(PROTOCOL, os.getComputerLabel() or ("Turtle-" .. myId))
+    end)
     
     print("[COMMS] Opened on " .. modemSide .. " (ID: " .. myId .. ")")
     return true
+end
+
+-- Check if comms are open
+function Comms.isOpen()
+    return isOpen
 end
 
 -- Close communications
