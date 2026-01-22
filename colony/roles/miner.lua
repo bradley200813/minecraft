@@ -338,59 +338,88 @@ function Miner.tunnelMine()
     return sessionStats
 end
 
--- Quarry mining
+-- Quarry mining - digs a square straight down layer by layer
 function Miner.quarryMine()
     print("[MINER] Starting quarry")
     print("[MINER] Size: " .. config.quarrySize .. "x" .. config.quarrySize)
     
+    local size = config.quarrySize
     local layers = 0
+    local goingRight = true  -- Track serpentine direction
     
     while not shouldReturn() do
-        -- Mine one layer
-        for row = 1, config.quarrySize do
-            for col = 1, config.quarrySize - 1 do
+        -- Mine current layer (dig down, then move across)
+        for row = 1, size do
+            for col = 1, size do
                 if shouldReturn() then 
                     return sessionStats
                 end
+                
+                -- Dig down at current position
                 digDown()
-                if Nav.forward(true) then
-                    sessionStats.distanceTraveled = sessionStats.distanceTraveled + 1
+                
+                -- Move to next column (unless last column in row)
+                if col < size then
+                    digForward()
+                    if Nav.forward(true) then
+                        sessionStats.distanceTraveled = sessionStats.distanceTraveled + 1
+                    end
                 end
             end
             
-            -- Turn for next row
-            if row < config.quarrySize then
-                if row % 2 == 1 then
+            -- Turn for next row (unless last row)
+            if row < size then
+                if goingRight then
                     Nav.turnRight()
-                    digDown()
+                    digForward()
                     Nav.forward(true)
                     Nav.turnRight()
                 else
                     Nav.turnLeft()
-                    digDown()
+                    digForward()
                     Nav.forward(true)
                     Nav.turnLeft()
                 end
+                goingRight = not goingRight
             end
         end
         
-        -- Go down
-        if not Nav.down(true) then
-            print("[MINER] Cannot go deeper")
-            break
-        end
-        
+        -- Completed one layer - now go down
         layers = layers + 1
         print("[MINER] Layer " .. layers .. " complete")
         
-        -- Turn around for next layer
-        Nav.turnRight()
-        Nav.turnRight()
-        
-        -- Drop trash
+        -- Drop trash periodically
         Inv.dropTrash()
+        
+        -- Check fuel before going deeper
+        if turtle.getFuelLevel() ~= "unlimited" and turtle.getFuelLevel() < config.minFuel then
+            print("[MINER] Low fuel, stopping")
+            break
+        end
+        
+        -- Go down to next layer
+        if not turtle.detectDown() then
+            -- Nothing below, dig and move down
+            if not Nav.down(true) then
+                print("[MINER] Cannot go deeper (void/bedrock)")
+                break
+            end
+        else
+            -- Something below, dig it first
+            digDown()
+            if not Nav.down(true) then
+                print("[MINER] Cannot go deeper (bedrock?)")
+                break
+            end
+        end
+        
+        -- Turn around for next layer serpentine
+        Nav.turnRight()
+        Nav.turnRight()
+        goingRight = not goingRight
     end
     
+    print("[MINER] Quarry complete: " .. layers .. " layers")
     return sessionStats
 end
 
