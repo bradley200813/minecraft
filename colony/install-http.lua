@@ -31,10 +31,15 @@ local FILES = {
     "/colony/lib/nav.lua",
     "/colony/lib/comms.lua",
     "/colony/lib/reporter.lua",
+    "/colony/lib/commander.lua",
     
     -- Roles
     "/colony/roles/miner.lua",
     "/colony/roles/crafter.lua",
+    
+    -- Updater
+    "/colony/update.lua",
+    "/colony/version.txt",
 }
 
 print("========================================")

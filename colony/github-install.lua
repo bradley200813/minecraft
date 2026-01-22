@@ -31,6 +31,7 @@ local FILES = {
     "lib/inv.lua",
     "lib/comms.lua",
     "lib/reporter.lua",
+    "lib/commander.lua",
     
     -- Roles
     "roles/miner.lua",
@@ -44,6 +45,10 @@ local FILES = {
     -- Tools
     "test.lua",
     "bridge.lua",
+    "update.lua",
+    
+    -- Version tracking
+    "version.txt",
 }
 
 -- Optional files (won't fail if missing)
